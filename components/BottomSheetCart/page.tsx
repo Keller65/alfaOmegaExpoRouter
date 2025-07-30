@@ -8,7 +8,7 @@ import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { memo, useCallback, useMemo, useRef, useState, useEffect } from 'react';
 import { ActivityIndicator, Alert, Text, TouchableOpacity, View, TextInput, Keyboard } from 'react-native';
-import { Image as ExpoImage } from 'expo-image';
+import { Image } from 'expo-image';
 import Feather from '@expo/vector-icons/Feather';
 import '../../global.css';
 
@@ -54,13 +54,16 @@ const CartItem = memo(({ item, onRemove }: CartItemProps) => {
     onRemove(item.itemCode, item.itemName);
   }, [item, onRemove]);
 
-  console.log(item)
-
   return (
     <View className="mb-3 border-b pb-3 border-gray-200 px-4">
       <View className="flex-row gap-4 items-center">
-        <View className="size-[100px] bg-gray-200 rounded-lg items-center justify-center">
-          <ExpoImage source={{ uri: item.imageUrl || "" }} className="w-[230px] h-[230px]" contentFit="contain" transition={500} />
+        <View className="size-[120px] bg-white border overflow-hidden border-gray-200 rounded-lg items-center justify-center">
+          <Image
+            source={{ uri: `https://pub-266f56f2e24d4d3b8e8abdb612029f2f.r2.dev/${item.itemCode}.png` }}
+            style={{ height: 120, width: 120, objectFit: "contain" }}
+            contentFit="contain"
+            transition={500}
+          />
         </View>
 
         <View className="flex-1">
