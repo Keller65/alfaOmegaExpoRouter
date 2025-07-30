@@ -19,8 +19,7 @@ export default function Layout() {
         <ProtectedLayout>
           <Tabs
             screenOptions={{
-              // tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-              tabBarActiveTintColor: "#09f", // Blue-800
+              tabBarActiveTintColor: "#000",
               headerShown: false,
               tabBarStyle: Platform.select({
                 ios: {

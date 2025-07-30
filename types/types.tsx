@@ -21,6 +21,9 @@ export type ProductDiscount = {
   imageUrl: string | null;
   taxType: "EXE" | "INA";
   tiers: Tier[];
+  quantity: number;
+  unitPrice: number;
+  originalPrice: number;
 };
 
 export type CreateOrder = {

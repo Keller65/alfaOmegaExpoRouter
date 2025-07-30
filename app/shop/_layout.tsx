@@ -1,11 +1,10 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { View, ActivityIndicator, Text, StyleSheet, Button } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import slugify from 'slugify';
 import { useAuth } from '@/context/auth';
-import { useRoute } from '@react-navigation/native';
+import { useAppStore } from '@/state';
 
 const Tab = createMaterialTopTabNavigator();
 import CategoryProductScreen from './(top-tabs)/category-product-list';
@@ -16,75 +15,15 @@ interface ProductCategory {
   slug: string;
 }
 
-interface SelectedClient {
-  cardCode: string;
-  cardName: string;
-  federalTaxID?: string;
-  priceListNum?: string;
-}
-
 export default function TopTabNavigatorLayout() {
   const { user } = useAuth();
+  const { selectedCustomer } = useAppStore();
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [clientPriceList, setClientPriceList] = useState<string | undefined>(undefined);
   const FETCH_URL = process.env.EXPO_PUBLIC_API_URL + "/sap/items/categories";
 
-  const route = useRoute();
-  const { cardCode, cardName, federalTaxID, priceListNum } = route.params as {
-    cardCode?: string;
-    cardName?: string;
-    federalTaxID?: string;
-    priceListNum?: string;
-  };
-
-  useEffect(() => {
-    const storeAndLoadClientData = async () => {
-      let currentCardCode = cardCode;
-      let currentCardName = cardName;
-      let currentFederalTaxID = federalTaxID;
-      let currentPriceListNum = priceListNum;
-
-      if (cardCode && cardName && federalTaxID && priceListNum) {
-        try {
-          await AsyncStorage.setItem(
-            'selectedClient',
-            JSON.stringify({ cardCode, cardName, federalTaxID, priceListNum })
-          );
-          console.log('Cliente guardado en AsyncStorage', cardName);
-          setClientPriceList(priceListNum);
-        } catch (err) {
-          console.error('Error al guardar cliente en AsyncStorage:', err);
-        }
-      } else {
-        try {
-          const cachedClientData = await AsyncStorage.getItem('selectedClient');
-          if (cachedClientData) {
-            const parsedClient: SelectedClient = JSON.parse(cachedClientData);
-            currentCardCode = parsedClient.cardCode;
-            currentCardName = parsedClient.cardName;
-            currentFederalTaxID = parsedClient.federalTaxID;
-            currentPriceListNum = parsedClient.priceListNum;
-            setClientPriceList(parsedClient.priceListNum);
-            console.log('Cliente cargado de AsyncStorage', parsedClient.cardName);
-          }
-        } catch (err) {
-          console.error('Error al cargar cliente de AsyncStorage:', err);
-        }
-      }
-
-      if (!clientPriceList && currentCardCode) {
-        if (currentPriceListNum) {
-          setClientPriceList(currentPriceListNum);
-        } else {
-          setClientPriceList('1');
-        }
-      }
-    };
-
-    storeAndLoadClientData();
-  }, [cardCode, cardName, federalTaxID, priceListNum, clientPriceList]);
+  const priceListNum = selectedCustomer?.priceListNum?.toString() || '1';
 
   const headers = useMemo(() => ({
     Authorization: `Bearer ${user?.token}`,
@@ -102,13 +41,6 @@ export default function TopTabNavigatorLayout() {
     setError(null);
 
     try {
-      const cached = await AsyncStorage.getItem('cachedCategories');
-      if (cached) {
-        setCategories(JSON.parse(cached));
-        setLoading(false);
-        return;
-      }
-
       const response = await axios.get<Array<{ code: string, name: string }>>(FETCH_URL, { headers });
 
       const formattedCategories: ProductCategory[] = response.data.map(category => ({
@@ -123,7 +55,6 @@ export default function TopTabNavigatorLayout() {
         slug: 'ofertas'
       });
 
-      await AsyncStorage.setItem('cachedCategories', JSON.stringify(formattedCategories));
       setCategories(formattedCategories);
 
     } catch (err: any) {
@@ -160,7 +91,7 @@ export default function TopTabNavigatorLayout() {
         }}
       />
     ))
-  ), [categories, clientPriceList]);
+  ), [categories, priceListNum]);
 
   if (!user?.token) {
     return (
@@ -170,11 +101,11 @@ export default function TopTabNavigatorLayout() {
     );
   }
 
-  if (loading || clientPriceList === undefined) { // Combine loading states
+  if (loading) {
     return (
       <View style={styles.fullScreenCenter}>
         <ActivityIndicator size="large" color="#007bff" />
-        <Text style={styles.loadingText}>Cargando datos del cliente y categorías...</Text>
+        <Text style={styles.loadingText}>Cargando categorías...</Text>
       </View>
     );
   }

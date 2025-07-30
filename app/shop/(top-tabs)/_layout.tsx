@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import slugify from 'slugify';
 import { useAuth } from '@/context/auth';
-import { useRoute } from '@react-navigation/native';
+import { useAppStore } from '@/state'; // Importamos el store
 
 const Tab = createMaterialTopTabNavigator();
 import CategoryProductScreen from './category-product-list';
@@ -25,35 +25,28 @@ interface SelectedClient {
 
 export default function TopTabNavigatorLayout() {
   const { user } = useAuth();
+  const { selectedCustomer } = useAppStore(); // Obtenemos el cliente seleccionado del store
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [clientPriceList, setClientPriceList] = useState<string | undefined>(undefined);
   const FETCH_URL = process.env.EXPO_PUBLIC_API_URL + "/sap/items/categories";
 
-  const route = useRoute();
-  const { cardCode, cardName, federalTaxID, priceListNum } = route.params as {
-    cardCode?: string;
-    cardName?: string;
-    federalTaxID?: string;
-    priceListNum?: string;
-  };
-
   useEffect(() => {
     const storeAndLoadClientData = async () => {
-      let currentCardCode = cardCode;
-      let currentCardName = cardName;
-      let currentFederalTaxID = federalTaxID;
-      let currentPriceListNum = priceListNum;
-
-      if (cardCode && cardName && federalTaxID && priceListNum) {
+      if (selectedCustomer) {
         try {
           await AsyncStorage.setItem(
             'selectedClient',
-            JSON.stringify({ cardCode, cardName, federalTaxID, priceListNum })
+            JSON.stringify({
+              cardCode: selectedCustomer.cardCode,
+              cardName: selectedCustomer.cardName,
+              federalTaxID: selectedCustomer.federalTaxID,
+              priceListNum: selectedCustomer.priceListNum?.toString()
+            })
           );
-          console.log('Cliente guardado en AsyncStorage', cardName);
-          setClientPriceList(priceListNum);
+          console.log('Cliente guardado en AsyncStorage', selectedCustomer.cardName);
+          setClientPriceList(selectedCustomer.priceListNum?.toString());
         } catch (err) {
           console.error('Error al guardar cliente en AsyncStorage:', err);
         }
@@ -62,10 +55,6 @@ export default function TopTabNavigatorLayout() {
           const cachedClientData = await AsyncStorage.getItem('selectedClient');
           if (cachedClientData) {
             const parsedClient: SelectedClient = JSON.parse(cachedClientData);
-            currentCardCode = parsedClient.cardCode;
-            currentCardName = parsedClient.cardName;
-            currentFederalTaxID = parsedClient.federalTaxID;
-            currentPriceListNum = parsedClient.priceListNum;
             setClientPriceList(parsedClient.priceListNum);
             console.log('Cliente cargado de AsyncStorage', parsedClient.cardName);
           }
@@ -74,17 +63,14 @@ export default function TopTabNavigatorLayout() {
         }
       }
 
-      if (!clientPriceList && currentCardCode) {
-        if (currentPriceListNum) {
-          setClientPriceList(currentPriceListNum);
-        } else {
-          setClientPriceList('1');
-        }
+      // Establecer lista de precios por defecto si no hay ninguna
+      if (!clientPriceList) {
+        setClientPriceList(selectedCustomer?.priceListNum?.toString() || '1');
       }
     };
 
     storeAndLoadClientData();
-  }, [cardCode, cardName, federalTaxID, priceListNum, clientPriceList]);
+  }, [selectedCustomer, clientPriceList]);
 
   const headers = useMemo(() => ({
     Authorization: `Bearer ${user?.token}`,
@@ -156,7 +142,7 @@ export default function TopTabNavigatorLayout() {
         initialParams={{
           groupName: category.name,
           groupCode: category.code,
-          priceListNum: priceListNum,
+          priceListNum: clientPriceList, // Usamos clientPriceList del estado
         }}
       />
     ))
@@ -170,7 +156,7 @@ export default function TopTabNavigatorLayout() {
     );
   }
 
-  if (loading || clientPriceList === undefined) { // Combine loading states
+  if (loading || clientPriceList === undefined) {
     return (
       <View style={styles.fullScreenCenter}>
         <ActivityIndicator size="large" color="#007bff" />

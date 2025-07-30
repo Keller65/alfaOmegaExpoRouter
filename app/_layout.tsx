@@ -10,6 +10,8 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { TextInput } from 'react-native';
 import { useAppStore } from '@/state/index';
 import { StatusBar } from 'expo-status-bar';
+import { Ionicons } from '@expo/vector-icons';
+import { View, TouchableOpacity } from 'react-native';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -29,6 +31,12 @@ export default function RootLayout() {
       clearTimeout(handler);
     };
   }, [rawSearchText, setDebouncedSearchText]);
+
+  const clearSearch = () => {
+    setRawSearchText('');
+    // Al limpiar, también actualiza el debouncedSearchText inmediatamente
+    setDebouncedSearchText('');
+  };
 
   const [fontsLoaded, fontError] = useFonts({
     'Poppins-Regular': require('../assets/fonts/Poppins-Regular.ttf'),
@@ -70,27 +78,40 @@ export default function RootLayout() {
             <Stack.Screen name="client" options={{ headerShown: true, headerTitle: 'Seleccionar Cliente' }} />
             <Stack.Screen name="order" options={{ headerShown: true, headerTitle: 'Detalles del Pedido' }} />
 
-            <Stack.Screen name="shop"
+            <Stack.Screen
+              name="shop"
               options={{
                 headerShown: true,
                 headerTitle: () => (
-                  <TextInput
-                    placeholder="Buscar Producto"
-                    style={{
-                      backgroundColor: '#f0f0f0',
-                      paddingHorizontal: 18,
-                      paddingVertical: 4,
-                      borderRadius: 20,
-                      width: 300,
-                      height: 36,
-                      fontSize: 14,
-                      fontFamily: 'Poppins-Regular',
-                    }}
-                    placeholderTextColor="#888"
-                    value={rawSearchText} // Conectado al estado del store
-                    onChangeText={setRawSearchText} // Conectado a la acción del store
-                    clearButtonMode="while-editing" // Permite borrar el texto fácilmente
-                  />
+                  <View className='flex-row items-center bg-[#f0f0f0] rounded-[20px] relative'>
+                    <TextInput
+                      placeholder="Buscar Producto"
+                      style={{
+                        backgroundColor: '#f0f0f0',
+                        paddingHorizontal: 18,
+                        paddingVertical: 4,
+                        borderRadius: 20,
+                        width: 300,
+                        height: 36,
+                        fontSize: 14,
+                        fontFamily: 'Poppins-Regular',
+                        paddingRight: 30,
+                      }}
+                      placeholderTextColor="#888"
+                      value={rawSearchText}
+                      onChangeText={setRawSearchText}
+                      clearButtonMode="never"
+                    />
+                    {rawSearchText.length > 0 && (
+                      <TouchableOpacity
+                        className='absolute right-2'
+                        onPress={clearSearch}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      >
+                        <Ionicons name="close-circle" size={20} color="#888" />
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 ),
               }}
             />

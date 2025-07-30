@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import '../../global.css';
+import BottomSheetCart from '@/components/BottomSheetCart/page'
 
 interface CartItemType {
   itemCode: string;
@@ -367,21 +368,24 @@ export default function PedidosScreen() {
       <View className="absolute bottom-8 right-8 gap-3 items-end z-10">
         {products.length > 0 && (
           <TouchableOpacity
-            className="rounded-full flex items-center justify-center h-[50px] w-[50px] bg-[#09f] shadow-lg shadow-[#09f]/30"
+            className="rounded-full flex items-center justify-center h-[50px] w-[50px] bg-black"
             onPress={openCart}
           >
-            <CartIcon color="white" />
+            <BottomSheetCart />
             <View className="absolute -top-2 -right-2 bg-red-500 rounded-full w-6 h-6 items-center justify-center">
               <Text className="text-white text-xs font-bold">{products.length}</Text>
             </View>
           </TouchableOpacity>
         )}
-        <TouchableOpacity
-          className="rounded-full flex items-center justify-center h-[50px] w-[50px] bg-[#09f] shadow-lg shadow-[#09f]/30"
-          onPress={() => router.push('/client')}
-        >
-          <PlusIcon color="white" />
-        </TouchableOpacity>
+
+        {products.length < 1 && (
+          <TouchableOpacity
+            className="rounded-full flex items-center justify-center h-[50px] w-[50px] bg-black"
+            onPress={() => router.push('/client')}
+          >
+            <PlusIcon color="white" />
+          </TouchableOpacity>
+        )}
       </View>
 
       {orderData ? (
@@ -433,11 +437,10 @@ export default function PedidosScreen() {
                 <FontAwesome6 name="file-invoice" size={24} color="#6B7280" />
                 <View>
                   <Text className="text-sm text-gray-500">Total</Text>
-                  <Text className="text-base font-[Poppins-Medium] text-gray-800 leading-4">L. {orderData.docTotal}</Text>
+                  <Text className="text-base font-[Poppins-Medium] text-gray-800 leading-4">L. {orderData.docTotal.toLocaleString()}</Text>
                 </View>
               </View>
 
-              {/* Botón */}
               <TouchableOpacity
                 onPress={() => router.push({
                   pathname: '/order',

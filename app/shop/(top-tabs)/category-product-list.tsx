@@ -11,25 +11,19 @@ import MinusIcon from '@/assets/icons/MinusIcon';
 import PlusIcon from '@/assets/icons/PlusIcon';
 import { useAuth } from '@/context/auth';
 import { ProductDiscount } from '@/types/types';
+import PercentIcon from '@/assets/icons/PercentIcon'
+import NavigateOrder from '@/components/NavigateOrder/page';
 
 const PAGE_SIZE = 20;
-
 const DEFAULT_PRODUCT_IMAGE = 'https://pub-978b0420802d40dca0561ef586d321f7.r2.dev/bote%20de%20chile%20tabasco%201%20galon.png';
 
 const ProductItem = memo(({ item, onPress }: { item: ProductDiscount, onPress: (item: ProductDiscount) => void }) => {
-  const itemInCart = useAppStore(state =>
-    state.products.find(p => p.itemCode === item.itemCode)
-  );
-
   return (
-    <TouchableOpacity
-      onPress={() => onPress(item)}
-      className="mb-4 bg-white w-[190px] gap-3 p-2"
-    >
+    <TouchableOpacity onPress={() => onPress(item)} className="mb-4 bg-white w-[190px] gap-3 p-2">
       <View className="rounded-2xl bg-gray-100 items-center justify-center h-[180px] relative">
-        {itemInCart && (
-          <View className="absolute top-2 right-2 bg-black rounded-full w-6 h-6 items-center justify-center z-10">
-            <Text className="text-white text-xs font-[Poppins-Bold]">{itemInCart.quantity}</Text>
+        {item.hasDiscount && (
+          <View className='absolute top-2 left-2'>
+            <PercentIcon />
           </View>
         )}
         <ExpoImage
@@ -39,14 +33,11 @@ const ProductItem = memo(({ item, onPress }: { item: ProductDiscount, onPress: (
           transition={500}
         />
       </View>
-
       <View>
-        <Text className="font-medium text-sm text-black">L. {item.price.toFixed(2)}</Text>
-        <Text
-          className="font-medium text-sm leading-4"
-          numberOfLines={2}
-          ellipsizeMode="tail"
-        >
+        <Text className="font-medium text-sm text-black">
+          L. {item.price.toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </Text>
+        <Text className="font-medium text-sm leading-4" numberOfLines={2} ellipsizeMode="tail">
           {item.itemName.toLowerCase()}
         </Text>
         <Text className="text-[10px] text-gray-400">{item.barCode}</Text>
@@ -65,9 +56,9 @@ const CategoryProductScreen = memo(() => {
   const updateQuantity = useAppStore(state => state.updateQuantity);
   const productsInCart = useAppStore(state => state.products);
   const debouncedSearchText = useAppStore(state => state.debouncedSearchText);
+  const { products } = useAppStore()
 
   const pagesCacheRef = useRef<Map<number, ProductDiscount[]>>(new Map());
-
   const [items, setItems] = useState<ProductDiscount[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -78,6 +69,9 @@ const CategoryProductScreen = memo(() => {
   const [editablePrice, setEditablePrice] = useState<number>(0);
   const [isPriceValid, setIsPriceValid] = useState<boolean>(true);
   const [editablePriceText, setEditablePriceText] = useState<string>('0.00');
+  const [editableTiers, setEditableTiers] = useState<ProductDiscount['tiers']>([]);
+  const [applyTierDiscounts, setApplyTierDiscounts] = useState(false);
+  const [isPriceManuallyEdited, setIsPriceManuallyEdited] = useState(false);
 
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -85,13 +79,15 @@ const CategoryProductScreen = memo(() => {
   const [totalItems, setTotalItems] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
   const FETCH_URL = process.env.EXPO_PUBLIC_API_URL + "/sap/items/";
-
+  const FETCH_URL_DISCOUNT = process.env.EXPO_PUBLIC_API_URL + "/sap/items/discounted";
   const insets = useSafeAreaInsets();
-
-  const snapPoints = useMemo(() => ['70%', '100%'], []);
+  const snapPoints = useMemo(() => ['85%', '100%'], []);
 
   const handleSheetChanges = useCallback((index: number) => {
-    if (index === -1) setSelectedItem(null);
+    if (index === -1) {
+      setSelectedItem(null);
+      setIsPriceManuallyEdited(false);
+    }
   }, []);
 
   const fetchProducts = useCallback(async ({ forceRefresh = false, loadMore = false } = {}) => {
@@ -100,50 +96,35 @@ const CategoryProductScreen = memo(() => {
       setError('No se ha iniciado sesión o el token no está disponible.');
       return;
     }
-
     const currentPage = loadMore ? page : 1;
-
     if (!forceRefresh && !loadMore && pagesCacheRef.current.has(currentPage)) {
       setItems(Array.from(pagesCacheRef.current.values()).flat());
       setLoading(false);
       return;
     }
-
     loadMore ? setLoadingMore(true) : setLoading(true);
     setError(null);
-
     try {
-      const headers = {
-        Authorization: `Bearer ${user.token}`,
-        'Content-Type': 'application/json',
-      };
+      const headers = { Authorization: `Bearer ${user.token}`, 'Content-Type': 'application/json' };
+      let url: string;
 
-      let url = `${FETCH_URL}active?page=${currentPage}&pageSize=${PAGE_SIZE}`;
-
-      if (priceListNum) {
-        url += `&priceList=${priceListNum}`;
-      }
-
-      if (groupCode) {
-        url += `&groupCode=${groupCode}`;
+      if (groupCode === '0000') {
+        url = `${FETCH_URL_DISCOUNT}?page=${currentPage}&pageSize=${PAGE_SIZE}`;
+      } else {
+        url = `${FETCH_URL}active?page=${currentPage}&pageSize=${PAGE_SIZE}`;
+        if (priceListNum) url += `&priceList=${priceListNum}`;
+        if (groupCode) url += `&groupCode=${groupCode}`;
       }
 
       const itemsResponse = await axios.get(url, { headers });
-
       const newItems = itemsResponse.data.items;
 
-      if (forceRefresh) {
-        pagesCacheRef.current = new Map();
-      }
+      if (forceRefresh) pagesCacheRef.current = new Map();
       pagesCacheRef.current.set(currentPage, newItems);
 
-      setItems(prevItems =>
-        loadMore ? [...prevItems, ...newItems] : Array.from(pagesCacheRef.current.values()).flat()
-      );
-
+      setItems(prevItems => loadMore ? [...prevItems, ...newItems] : Array.from(pagesCacheRef.current.values()).flat());
       setPage(currentPage);
       setTotalItems(itemsResponse.data.total);
-
     } catch (err: any) {
       setError(err?.message || 'Error inesperado');
       if (!loadMore) setItems([]);
@@ -169,34 +150,56 @@ const CategoryProductScreen = memo(() => {
       setEditablePrice(0);
       setEditablePriceText('0.00');
       setIsPriceValid(true);
+      setEditableTiers([]);
+      setIsPriceManuallyEdited(false);
       return;
     }
+    setEditableTiers(selectedItem.tiers ? [...selectedItem.tiers] : []);
+    setIsPriceValid(true);
+    setIsPriceManuallyEdited(false);
 
-    let calculatedUnitPrice = selectedItem.price;
-    const applicable = selectedItem.tiers?.filter(t => quantity >= t.qty).sort((a, b) => b.qty - a.qty)[0];
-    if (applicable) {
-      calculatedUnitPrice = applicable.price;
+    setUnitPrice(selectedItem.price);
+    setEditablePrice(selectedItem.price);
+    setEditablePriceText(selectedItem.price.toFixed(2));
+
+  }, [selectedItem]);
+
+  useEffect(() => {
+    if (!selectedItem || isPriceManuallyEdited) return;
+
+    let newUnitPrice;
+    if (applyTierDiscounts) {
+      const applicableTier = (editableTiers || [])
+        .filter(t => quantity >= t.qty)
+        .sort((a, b) => b.qty - a.qty)[0];
+      newUnitPrice = applicableTier ? applicableTier.price : selectedItem.price;
+    } else {
+      newUnitPrice = selectedItem.price;
     }
 
-    setUnitPrice(calculatedUnitPrice);
-    setEditablePrice(calculatedUnitPrice);
-    setEditablePriceText(calculatedUnitPrice.toFixed(2));
-    setTotal(calculatedUnitPrice * quantity);
-    setIsPriceValid(true);
-  }, [selectedItem]);
+    setUnitPrice(newUnitPrice);
+    setEditablePrice(newUnitPrice);
+    setEditablePriceText(newUnitPrice.toFixed(2));
+  }, [quantity, editableTiers, selectedItem, applyTierDiscounts, isPriceManuallyEdited]);
 
   useEffect(() => {
     if (selectedItem && editablePrice > 0 && quantity > 0) {
       setTotal(editablePrice * quantity);
-      if (editablePrice < selectedItem.price) {
-        setIsPriceValid(false);
-      } else {
-        setIsPriceValid(true);
-      }
+
+      const originalApplicableTier = selectedItem.tiers
+        ?.filter(t => quantity >= t.qty)
+        .sort((a, b) => b.qty - a.qty)[0];
+
+      const minimumAllowedPrice = (applyTierDiscounts && originalApplicableTier)
+        ? originalApplicableTier.price
+        : selectedItem.price;
+
+      setIsPriceValid(editablePrice >= minimumAllowedPrice);
     } else {
       setTotal(0);
+      setIsPriceValid(false);
     }
-  }, [editablePrice, quantity, selectedItem]);
+  }, [editablePrice, quantity, selectedItem, applyTierDiscounts]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -206,59 +209,48 @@ const CategoryProductScreen = memo(() => {
   }, [fetchProducts]);
 
   const loadMoreItems = useCallback(() => {
-    if (!loadingMore && items.length < totalItems) {
-      setPage(prev => prev + 1);
-    }
-    if (!loadingMore && items.length >= totalItems && items.length % PAGE_SIZE === 0) {
-      setPage(prev => prev + 1);
-    }
+    if (!loadingMore && items.length < totalItems) setPage(prev => prev + 1);
+    if (!loadingMore && items.length >= totalItems && items.length % PAGE_SIZE === 0) setPage(prev => prev + 1);
   }, [loadingMore, items.length, totalItems]);
 
   useEffect(() => {
-    if (page > 1) {
-      fetchProducts({ loadMore: true });
-    }
+    if (page > 1) fetchProducts({ loadMore: true });
   }, [page, fetchProducts]);
 
   const handleProductPress = useCallback((item: ProductDiscount) => {
     setSelectedItem(item);
     setQuantity(1);
+    setIsPriceManuallyEdited(false);
     bottomSheetModalRef.current?.present();
-    console.log('Producto seleccionado:', item);
   }, []);
 
   const handleAddToCart = useCallback(() => {
-    const finalPrice = editablePrice;
+    const finalPriceForCart = editablePrice;
 
-    if (!selectedItem || quantity <= 0 || !isPriceValid || finalPrice <= 0) {
+    if (!selectedItem || quantity <= 0 || !isPriceValid || finalPriceForCart <= 0) {
+      Alert.alert('Error', 'Por favor, asegúrate de que la cantidad sea mayor a 0 y el precio sea válido.');
       return;
     }
 
     const itemInCart = productsInCart.find(p => p.itemCode === selectedItem.itemCode);
-    const productData = { ...selectedItem, quantity, unitPrice: finalPrice };
-
-    console.log("Producto agregado al carrito:", productData);
+    const productData = { ...selectedItem, quantity, unitPrice: finalPriceForCart, tiers: editableTiers, originalPrice: selectedItem.price };
 
     if (itemInCart) {
-      Alert.alert(
-        'Producto ya en carrito',
-        `${selectedItem.itemName} ya está en tu carrito. ¿Actualizar cantidad y precio?`,
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          {
-            text: 'Actualizar',
-            onPress: () => {
-              updateQuantity(selectedItem.itemCode, quantity, finalPrice);
-              bottomSheetModalRef.current?.dismiss();
-            },
-          },
-        ]
-      );
+      Alert.alert('Producto ya en carrito', `${selectedItem.itemName} ya está en tu carrito. ¿Actualizar cantidad y precio?`, [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Actualizar', onPress: () => {
+            updateQuantity(selectedItem.itemCode, quantity, finalPriceForCart);
+            bottomSheetModalRef.current?.dismiss();
+          }
+        },
+      ]);
     } else {
       addProduct(productData);
+      console.log("Producto Agregado al carrito", productData)
       bottomSheetModalRef.current?.dismiss();
     }
-  }, [addProduct, productsInCart, quantity, selectedItem, editablePrice, isPriceValid, updateQuantity]);
+  }, [addProduct, productsInCart, quantity, selectedItem, editablePrice, isPriceValid, updateQuantity, editableTiers]);
 
   const filteredItems = useMemo(() => {
     const text = debouncedSearchText?.toLowerCase() || '';
@@ -276,51 +268,66 @@ const CategoryProductScreen = memo(() => {
   const renderFooter = useCallback((props: any) => (
     selectedItem ? (
       <BottomSheetFooter {...props}>
-        <View
-          className='w-full px-4 pt-4 bg-white border-t border-gray-200'
-          style={{ paddingBottom: insets.bottom }}
-        >
-          <View className="flex-row justify-between items-center">
-            <View className="flex-row items-center">
-              <TouchableOpacity className="bg-gray-200 rounded-full p-2" onPress={() => setQuantity(q => Math.max(1, q - 1))}>
-                <MinusIcon size={20} />
-              </TouchableOpacity>
-              <TextInput
-                value={quantity.toString()}
-                onChangeText={(text) => setQuantity(Math.max(1, parseInt(text.replace(/[^0-9]/g, '')) || 1))}
-                keyboardType="numeric"
-                className="mx-4 text-center text-lg text-black w-12"
-              />
-              <TouchableOpacity className="bg-gray-200 rounded-full p-2" onPress={() => setQuantity(q => q + 1)}>
-                <PlusIcon size={20} />
-              </TouchableOpacity>
-            </View>
-            <View className="w-[130px]">
-              <Text className="font-[Poppins-Bold] text-gray-500 tracking-[-0.3px] leading-3">Total</Text>
-              <Text className="text-2xl font-[Poppins-Bold] tracking-[-0.3px]">
-                {new Intl.NumberFormat('es-HN', {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                  useGrouping: true
-                }).format(total)}
-              </Text>
-            </View>
+        <View className='w-full px-4 pt-4 bg-white border-t border-gray-200' style={{ paddingBottom: insets.bottom }}>
+          <View className="w-full flex-row justify-between items-end">
+            <Text className="font-[Poppins-Bold] text-gray-500 tracking-[-0.3px]">Total</Text>
+            <Text className="text-2xl font-[Poppins-Bold] tracking-[-0.3px]">
+              {new Intl.NumberFormat('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: true }).format(total)}
+            </Text>
           </View>
-
           <TouchableOpacity
-            className={`mt-4 rounded-full py-3 items-center justify-center h-[50px] ${!selectedItem || quantity <= 0 || !isPriceValid || editablePrice <= 0
-              ? 'bg-gray-400'
-              : 'bg-black'
-              }`}
+            className={`mt-4 rounded-full py-3 items-center justify-center h-[50px] ${!isPriceValid || quantity <= 0 ? 'bg-gray-400' : 'bg-black'}`}
             onPress={handleAddToCart}
-            disabled={!selectedItem || quantity <= 0 || !isPriceValid || editablePrice <= 0}
+            disabled={!isPriceValid || quantity <= 0}
           >
             <Text className="text-white font-[Poppins-Bold]">Agregar al carrito</Text>
           </TouchableOpacity>
         </View>
       </BottomSheetFooter>
     ) : null
-  ), [selectedItem, quantity, total, editablePrice, isPriceValid, handleAddToCart, insets.bottom, setQuantity]);
+  ), [selectedItem, quantity, total, isPriceValid, handleAddToCart, insets.bottom]);
+
+  const handleQuantityChange = (text: string) => {
+    const cleanedText = text.replace(/[^0-9]/g, '');
+    if (cleanedText === '') {
+      setQuantity(1);
+    } else {
+      const newQuantity = parseInt(cleanedText, 10);
+      setQuantity(Math.max(1, isNaN(newQuantity) ? 1 : newQuantity));
+    }
+  };
+
+  const handlePriceChange = (text: string) => {
+    setIsPriceManuallyEdited(true);
+    const cleanedText = text.replace(/[^0-9.]/g, '');
+    const parts = cleanedText.split('.');
+    if (parts.length > 2) {
+      setEditablePriceText(parts.slice(0, 2).join('.'));
+    } else {
+      setEditablePriceText(cleanedText);
+    }
+    const parsedValue = parseFloat(cleanedText);
+    if (!isNaN(parsedValue)) {
+      setEditablePrice(parsedValue);
+    } else {
+      setEditablePrice(0);
+    }
+  };
+
+  const handlePriceBlur = () => {
+    let finalValue = parseFloat(editablePriceText);
+    if (isNaN(finalValue)) {
+      finalValue = unitPrice;
+    } else {
+      finalValue = parseFloat(finalValue.toFixed(2));
+    }
+    setEditablePrice(finalValue);
+    setEditablePriceText(finalValue.toFixed(2));
+
+    const originalApplicableTier = selectedItem?.tiers?.filter(t => quantity >= t.qty).sort((a, b) => b.qty - a.qty)[0];
+    const minimumAllowedPrice = (applyTierDiscounts && originalApplicableTier) ? originalApplicableTier.price : selectedItem?.price || 0;
+    setIsPriceValid(finalValue >= minimumAllowedPrice);
+  };
 
   if (loading && !loadingMore) {
     return (
@@ -343,7 +350,7 @@ const CategoryProductScreen = memo(() => {
   }
 
   return (
-    <View className="flex-1 bg-white">
+    <View className="flex-1 bg-white relative">
       <FlashList
         data={filteredItems}
         renderItem={renderItem}
@@ -352,97 +359,101 @@ const CategoryProductScreen = memo(() => {
         numColumns={2}
         onEndReached={loadMoreItems}
         onEndReachedThreshold={0.2}
-        ListFooterComponent={
-          loadingMore !== false ? (
-            <View className="py-4">
-              <ActivityIndicator size="small" color="#000" />
-            </View>
-          ) : null
-        }
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={["#3b82f6"]}
-            tintColor="#3b82f6"
-          />
-        }
-        contentContainerStyle={{
-          paddingHorizontal: 8,
-          paddingBottom: 20,
-        }}
+        ListFooterComponent={loadingMore ? <View className="py-4"><ActivityIndicator size="small" color="#000" /></View> : null}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#3b82f6"]} tintColor="#3b82f6" />}
+        contentContainerStyle={{ paddingHorizontal: 8, paddingBottom: 20 }}
         drawDistance={500}
-        overrideItemLayout={(layout) => {
-          layout.size = 100;
-        }}
+        overrideItemLayout={(layout) => { layout.size = 100; }}
       />
+
+      {products.length > 0 && <NavigateOrder />}
 
       <BottomSheetModal
         ref={bottomSheetModalRef}
         onChange={handleSheetChanges}
         snapPoints={snapPoints}
         enablePanDownToClose={true}
-        backdropComponent={(props) => (
-          <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} opacity={0.5} pressBehavior="close" />
-        )}
+        backdropComponent={(props) => (<BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} opacity={0.5} pressBehavior="close" />)}
         footerComponent={renderFooter}
       >
         <BottomSheetView style={{ flex: 1 }}>
-          {selectedItem && (
-            <View>
-              <View className="w-full h-[230px] items-center justify-center bg-gray-200 mb-4 shadow-sm shadow-gray-400">
-                <ExpoImage
-                  source={{ uri: selectedItem.imageUrl || DEFAULT_PRODUCT_IMAGE }}
-                  className="w-[230px] h-[230px]"
-                  contentFit="contain"
-                  transition={500}
-                />
-              </View>
+          <ScrollView>
+            {selectedItem && (
+              <View>
+                <View className="w-full h-[230px] items-center justify-center bg-gray-200 mb-4 shadow-sm shadow-gray-400">
+                  <ExpoImage source={{ uri: selectedItem.imageUrl || DEFAULT_PRODUCT_IMAGE }} className="w-[230px] h-[230px]" contentFit="contain" transition={500} />
+                </View>
+                <View className='px-[16px]'>
+                  <Text className="text-[24px] font-[Poppins-Bold] tracking-[-0.3px] text-gray-900">{selectedItem.itemName}</Text>
 
-              <View className='px-[16px]'>
-                <Text className="text-[24px] font-[Poppins-Bold] tracking-[-0.3px] leading-8 text-gray-900">
-                  {selectedItem.itemName}
-                </Text>
+                  <View className='flex-row items-start justify-between'>
+                    <View className="bg-white py-4 rounded-lg">
+                      <Text className="font-[Poppins-SemiBold] text-base tracking-[-0.3px] text-gray-800 leading-3">Precio de Venta:</Text>
+                      <View className="flex-row items-center">
+                        <Text className="font-[Poppins-Bold] text-lg tracking-[-0.3px] text-black mr-2">L.</Text>
+                        <TextInput
+                          className={`p-2 text-lg font-[Poppins-Bold] text-black w-[100px] ${!isPriceValid ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                          value={editablePriceText}
+                          onChangeText={handlePriceChange}
+                          onBlur={handlePriceBlur}
+                          keyboardType="numeric"
+                        />
+                      </View>
+                      {!isPriceValid && <Text className="text-red-600 text-xs mt-1 font-[Poppins-Regular] tracking-[-0.3px]">El precio no puede ser menor al mínimo permitido.</Text>}
+                      <Text className="text-xs text-gray-500 font-[Poppins-Regular] tracking-[-0.3px]">Precio base original: L.{selectedItem.price.toFixed(2)}</Text>
+                    </View>
 
-                <View className="bg-white py-4 rounded-lg">
-                  <Text className="font-[Poppins-SemiBold] text-base tracking-[-0.3px] text-gray-800 leading-3">Precio de Venta:</Text>
-                  <View className="flex-row items-center">
-                    <Text className="font-[Poppins-Bold] text-lg tracking-[-0.3px] text-black mr-2">L.</Text>
-                    <TextInput
-                      className={`p-2 text-lg font-[Poppins-Bold] text-black w-[100px] ${!isPriceValid ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
-                      value={editablePriceText}
-                      onChangeText={(text) => {
-                        const cleanedText = text.replace(/[^0-9.]/g, '');
-                        const parts = cleanedText.split('.');
-                        if (parts.length > 2) {
-                          setEditablePriceText(parts[0] + '.' + parts.slice(1).join(''));
-                        } else {
-                          setEditablePriceText(cleanedText);
-                        }
-
-                        let parsedValue = parseFloat(cleanedText);
-                        setEditablePrice(isNaN(parsedValue) ? 0 : parsedValue);
-                      }}
-                      keyboardType="numeric"
-                      onBlur={() => {
-                        let finalValue = parseFloat(editablePriceText);
-
-                        if (isNaN(finalValue) || finalValue <= 0) {
-                          finalValue = selectedItem.price;
-                        } else if (selectedItem && finalValue < selectedItem.price) {
-                          finalValue = selectedItem.price;
-                        }
-
-                        setEditablePrice(finalValue);
-                        setEditablePriceText(finalValue.toFixed(2));
-                        setIsPriceValid(finalValue >= selectedItem.price);
-                      }}
-                    />
+                    <View className="flex-row items-center">
+                      <TouchableOpacity className="bg-gray-200 rounded-full p-2" onPress={() => setQuantity(q => Math.max(1, q - 1))}>
+                        <MinusIcon size={20} />
+                      </TouchableOpacity>
+                      <TextInput
+                        value={quantity.toString()}
+                        onChangeText={handleQuantityChange}
+                        keyboardType="numeric"
+                        className="mx-4 text-center text-lg text-black w-12"
+                      />
+                      <TouchableOpacity className="bg-gray-200 rounded-full p-2" onPress={() => setQuantity(q => q + 1)}>
+                        <PlusIcon size={20} />
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                  {!isPriceValid && (
-                    <Text className="text-red-600 text-xs mt-1 font-[Poppins-Regular] tracking-[-0.3px]">El precio no puede ser menor al precio base.</Text>
+
+                  {editableTiers && editableTiers.length > 0 && (
+                    <View className={`bg-gray-100 p-4 rounded-lg ${!applyTierDiscounts && 'opacity-50'}`}>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setApplyTierDiscounts(prev => {
+                            const newValue = !prev;
+                            if (newValue) {
+                              setIsPriceManuallyEdited(false);
+                            }
+                            return newValue;
+                          });
+                        }}
+                        className='flex-row justify-between items-center mb-3'
+                      >
+                        <Text className="font-[Poppins-Bold] text-base tracking-[-0.3px] text-gray-800">Precios por Cantidad:</Text>
+                        <Text className='font-[Poppins-SemiBold] text-blue-500'>{applyTierDiscounts ? 'Desactivar' : 'Activar'}</Text>
+                      </TouchableOpacity>
+                      {editableTiers.map((tier, index) => {
+                        return (
+                          <View key={index} className="mb-2">
+                            <View className='flex-row items-center justify-between'>
+                              <View className='items-start'>
+                                <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-gray-700">Desde {tier.qty} unidades:</Text>
+                                {tier.percent > 0 && <Text className="text-green-600 text-xs">({tier.percent}% desc)</Text>}
+                              </View>
+                              <View className="flex-row items-center">
+                                <Text className="font-[Poppins-Bold] text-base text-black mr-1">L.</Text>
+                                <Text className="font-[Poppins-Bold] text-base text-black">{tier.price.toFixed(2)}</Text>
+                              </View>
+                            </View>
+                          </View>
+                        )
+                      })}
+                    </View>
                   )}
-                  <Text className="text-xs text-gray-500 font-[Poppins-Regular] tracking-[-0.3px]">Precio base original: L.{selectedItem.price.toFixed(2)}</Text>
 
                   <View className="flex-1 mt-2">
                     <View className="bg-gray-100 p-3 rounded-lg">
@@ -454,40 +465,20 @@ const CategoryProductScreen = memo(() => {
                       </View>
                     </View>
                   </View>
-                </View>
-
-                {selectedItem.tiers?.length > 0 && (
-                  <View className="bg-gray-100 p-4 rounded-lg mb-4">
-                    <Text className="font-[Poppins-Bold] text-base tracking-[-0.3px] mb-3 text-gray-800">Precios por Cantidad:</Text>
-                    {selectedItem.tiers.map((tier, index) => (
-                      <View key={index} className="mb-2">
-                        <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-gray-700">
-                          Desde {tier.qty} unidades: <Text className="font-[Poppins-Bold] text-base">L. {tier.price.toFixed(2)}</Text>
-                          {tier.percent > 0 && <Text className="text-green-600"> ({tier.percent}% desc)</Text>}
-                        </Text>
-                        {tier.expiry && (
-                          <Text className="font-[Poppins-Regular] text-xs text-gray-500">
-                            Válido hasta: {tier.expiry}
-                          </Text>
-                        )}
-                      </View>
-                    ))}
-                  </View>
-                )}
-
-                <View className="flex-1 flex-row w-full h-fit justify-between gap-4">
-                  <View className="bg-gray-100 p-3 flex-1 rounded-lg h-[60px]">
-                    <Text className="font-[Poppins-SemiBold] text-xs tracking-[-0.3px] text-gray-700 mb-1">Código de Barras:</Text>
-                    <Text className="font-[Poppins-Bold] text-base text-gray-900">{selectedItem.barCode}</Text>
-                  </View>
-                  <View className="bg-gray-100 p-3 flex-1 rounded-lg h-[60px]">
-                    <Text className="font-[Poppins-SemiBold] text-xs tracking-[-0.3px] text-gray-700 mb-1">Unidad de Venta:</Text>
-                    <Text className="font-[Poppins-Bold] text-base text-gray-900">{selectedItem.salesUnit} x {selectedItem.salesItemsPerUnit}</Text>
+                  <View className="flex-1 flex-row w-full h-fit justify-between gap-2 mt-2">
+                    <View className="bg-gray-100 p-3 flex-1 rounded-lg h-[55px]">
+                      <Text className="font-[Poppins-SemiBold] text-xs tracking-[-0.3px] text-gray-700 mb-1">Código de Barras:</Text>
+                      <Text className="font-[Poppins-Bold] text-base text-gray-900 leading-3">{selectedItem.barCode}</Text>
+                    </View>
+                    <View className="bg-gray-100 p-3 flex-1 rounded-lg h-[55px]">
+                      <Text className="font-[Poppins-SemiBold] text-xs tracking-[-0.3px] text-gray-700 mb-1">Unidad de Venta:</Text>
+                      <Text className="font-[Poppins-Bold] text-base text-gray-900 leading-3">{selectedItem.salesUnit} x {selectedItem.salesItemsPerUnit}</Text>
+                    </View>
                   </View>
                 </View>
               </View>
-            </View>
-          )}
+            )}
+          </ScrollView>
         </BottomSheetView>
       </BottomSheetModal>
     </View>

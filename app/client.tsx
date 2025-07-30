@@ -70,7 +70,7 @@ const ClientScreen = memo(() => {
     async (customer: Customer) => {
       try {
         setSelectedCustomer(customer);
-        console.log('Cliente seleccionado en Zustand:', customer.cardName);
+        console.log('Cliente seleccionado en Zustand:', customer);
 
         router.push({
           pathname: '/shop',
@@ -79,7 +79,6 @@ const ClientScreen = memo(() => {
             priceListNum: customer.priceListNum
           },
         });
-        console.log('Cliente Seleccionado', customer.cardCode);
       } catch (err) {
         console.error('Error al navegar:', err);
         Alert.alert('Error de navegación', 'No se pudo abrir la pantalla de pedido. Por favor, inténtalo de nuevo.');

@@ -188,26 +188,26 @@ const OrderDetails = () => {
           (item) => `
                   <tr>
                     <td>${item.itemDescription}</td>
-                    <td class="text-center">${item.quantity}</td>
-                    <td class="text-right">L. ${item.priceAfterVAT.toFixed(2)}</td>
-                    <td class="text-right font-semibold">L. ${item.lineTotal.toFixed(2)}</td>
+                    <td class="text-center">${item.quantity.toLocaleString()}</td>
+                    <td class="text-right">L. ${item.priceAfterVAT.toLocaleString()}</td>
+                    <td class="text-right font-semibold">L. ${(item.quantity * item.priceAfterVAT).toLocaleString()}</td>
                   </tr>
                 `
         )
         .join('')}
               <tr class="isv-row">
                 <td colspan="3" class="text-right"><strong>ISV:</strong></td>
-                <td class="text-right font-semibold">L. ${orderData.vatSum.toFixed(2)}</td>
+                <td class="text-right font-semibold">L. ${orderData.vatSum.toLocaleString()}</td>
               </tr>
               
               <tr class="subtotal-row">
                 <td colspan="3" class="text-right"><strong>SubTotal:</strong></td>
-                <td class="text-right font-semibold">L. ${(orderData.docTotal - orderData.vatSum).toFixed(2)}</td>
+                <td class="text-right font-semibold">L. ${(orderData.docTotal - orderData.vatSum).toLocaleString()}</td>
               </tr>
 
               <tr class="total-row">
                 <td colspan="3" class="text-right"><strong>Total del Pedido:</strong></td>
-                <td class="text-right font-semibold">L. ${orderData.docTotal.toFixed(2)}</td>
+                <td class="text-right font-semibold">L. ${orderData.docTotal.toLocaleString()}</td>
               </tr>
             </tbody>
           </table>
@@ -302,13 +302,13 @@ const OrderDetails = () => {
                 Total del Pedido
               </Text>
               <Text className="text-xl text-gray-900 mt-1 font-[Poppins-SemiBold]">
-                L. {orderData.docTotal.toFixed(2)}
+                L. {orderData.docTotal.toLocaleString()}
               </Text>
             </View>
             <View className="flex-1 p-3 bg-gray-50 rounded-lg ml-2">
               <Text className="text-xs text-gray-500 font-[Poppins-Regular]">Items</Text>
               <Text className="text-xl font-[Poppins-SemiBold] text-gray-900 mt-1">
-                {totalItems}
+                {totalItems.toLocaleString()}
               </Text>
             </View>
           </View>
@@ -347,7 +347,7 @@ const OrderDetails = () => {
                 <Ionicons name="bag-handle-outline" size={24} color="#6B7280" />
               </View>
               <View className="flex-1">
-                <Text className="text-base font-semibold font-[Poppins-Regular] tracking-[-0.3px]">
+                <Text className="text-base font-semibold font-[Poppins-Regular] tracking-[-0.3px] leading-5">
                   {item.itemDescription}
                 </Text>
                 <Text className="text-sm text-gray-500 font-[Poppins-Regular] tracking-[-0.3px]">
@@ -356,10 +356,10 @@ const OrderDetails = () => {
               </View>
               <View className="items-end">
                 <Text className="text-base font-bold font-[Poppins-Regular] tracking-[-0.3px]">
-                  L. {item.lineTotal.toFixed(2)}
+                  L. {item.lineTotal.toLocaleString()}
                 </Text>
                 <Text className="text-xs text-gray-500 font-[Poppins-Regular] tracking-[-0.3px]">
-                  Precio Unitario: L. {item.priceAfterVAT.toFixed(2)}
+                  Precio Unitario: L. {item.priceAfterVAT.toLocaleString()}
                 </Text>
               </View>
             </View>
