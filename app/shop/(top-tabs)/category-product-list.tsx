@@ -3,7 +3,7 @@ import { BottomSheetBackdrop, BottomSheetFooter, BottomSheetModal, BottomSheetVi
 import { useRoute } from '@react-navigation/native';
 import { FlashList } from '@shopify/flash-list';
 import axios from 'axios';
-import { Image as ExpoImage } from 'expo-image';
+import { Image } from 'expo-image';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,24 +15,24 @@ import PercentIcon from '@/assets/icons/PercentIcon'
 import NavigateOrder from '@/components/NavigateOrder/page';
 
 const PAGE_SIZE = 20;
-const DEFAULT_PRODUCT_IMAGE = 'https://pub-978b0420802d40dca0561ef586d321f7.r2.dev/bote%20de%20chile%20tabasco%201%20galon.png';
 
 const ProductItem = memo(({ item, onPress }: { item: ProductDiscount, onPress: (item: ProductDiscount) => void }) => {
   return (
     <TouchableOpacity onPress={() => onPress(item)} className="mb-4 bg-white w-[190px] gap-3 p-2">
-      <View className="rounded-2xl bg-gray-100 items-center justify-center h-[180px] relative">
+      <View className="rounded-2xl bg-white items-center justify-center h-[180px] relative overflow-hidden border border-gray-200">
         {item.hasDiscount && (
-          <View className='absolute top-2 left-2'>
+          <View className='absolute top-2 left-2 z-10'>
             <PercentIcon />
           </View>
         )}
-        <ExpoImage
-          source={{ uri: item.imageUrl || DEFAULT_PRODUCT_IMAGE }}
-          className="w-[150px] h-[150px]"
+        <Image
+          source={{ uri: `https://pub-266f56f2e24d4d3b8e8abdb612029f2f.r2.dev/${item.itemCode}.png` }}
+          style={{ height: 180, width: 180, objectFit: "contain", borderRadius: 16 }}
           contentFit="contain"
           transition={500}
         />
       </View>
+
       <View>
         <Text className="font-medium text-sm text-black">
           L. {item.price.toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -290,10 +290,10 @@ const CategoryProductScreen = memo(() => {
   const handleQuantityChange = (text: string) => {
     const cleanedText = text.replace(/[^0-9]/g, '');
     if (cleanedText === '') {
-      setQuantity(1);
+      setQuantity(0);
     } else {
       const newQuantity = parseInt(cleanedText, 10);
-      setQuantity(Math.max(1, isNaN(newQuantity) ? 1 : newQuantity));
+      setQuantity(Math.max(0, isNaN(newQuantity) ? 0 : newQuantity));
     }
   };
 
@@ -380,11 +380,27 @@ const CategoryProductScreen = memo(() => {
           <ScrollView>
             {selectedItem && (
               <View>
-                <View className="w-full h-[230px] items-center justify-center bg-gray-200 mb-4 shadow-sm shadow-gray-400">
-                  <ExpoImage source={{ uri: selectedItem.imageUrl || DEFAULT_PRODUCT_IMAGE }} className="w-[230px] h-[230px]" contentFit="contain" transition={500} />
+                <View className="w-full h-[230px] items-center justify-center bg-white overflow-hidden">
+                  <Image
+                    source={`https://pub-266f56f2e24d4d3b8e8abdb612029f2f.r2.dev/${selectedItem.itemCode}.png`}
+                    style={{ height: 230, width: 230 }}
+                    contentFit="contain"
+                    transition={500}
+                  />
                 </View>
+
                 <View className='px-[16px]'>
-                  <Text className="text-[24px] font-[Poppins-Bold] tracking-[-0.3px] text-gray-900">{selectedItem.itemName}</Text>
+                  <Text className="text-[18px] font-[Poppins-Bold] tracking-[-0.3px] text-gray-900">{selectedItem.itemName}</Text>
+
+                  <View className="flex-1 flex-row w-full h-fit justify-between gap-2 mt-1">
+                    <View className='bg-gray-200 py-2 px-3 w-fit rounded-full'>
+                      <Text className="font-[Poppins-Regular] text-[12px] leading-3 tracking-[-0.3px] text-gray-700">{selectedItem.barCode}</Text>
+                    </View>
+
+                    <View className='bg-gray-200 py-2 px-3 w-fit rounded-full'>
+                      <Text className="font-[Poppins-Regular] text-[12px] leading-3 tracking-[-0.3px] text-gray-700">{selectedItem.salesUnit} x {selectedItem.salesItemsPerUnit}</Text>
+                    </View>
+                  </View>
 
                   <View className='flex-row items-start justify-between'>
                     <View className="bg-white py-4 rounded-lg">
@@ -399,7 +415,6 @@ const CategoryProductScreen = memo(() => {
                           keyboardType="numeric"
                         />
                       </View>
-                      {!isPriceValid && <Text className="text-red-600 text-xs mt-1 font-[Poppins-Regular] tracking-[-0.3px]">El precio no puede ser menor al mínimo permitido.</Text>}
                       <Text className="text-xs text-gray-500 font-[Poppins-Regular] tracking-[-0.3px]">Precio base original: L.{selectedItem.price.toFixed(2)}</Text>
                     </View>
 
@@ -418,6 +433,8 @@ const CategoryProductScreen = memo(() => {
                       </TouchableOpacity>
                     </View>
                   </View>
+
+                  {!isPriceValid && <Text className="text-red-600 text-xs font-[Poppins-Regular] tracking-[-0.3px]">El precio no puede ser menor al mínimo permitido.</Text>}
 
                   {editableTiers && editableTiers.length > 0 && (
                     <View className={`bg-gray-100 p-4 rounded-lg ${!applyTierDiscounts && 'opacity-50'}`}>
@@ -463,16 +480,6 @@ const CategoryProductScreen = memo(() => {
                         <Text className="font-[Poppins-Regular] text-sm text-gray-600">En Pedido: {selectedItem.ordered}</Text>
                         <Text className="font-[Poppins-Regular] text-sm text-gray-600">Comprometido: {selectedItem.committed}</Text>
                       </View>
-                    </View>
-                  </View>
-                  <View className="flex-1 flex-row w-full h-fit justify-between gap-2 mt-2">
-                    <View className="bg-gray-100 p-3 flex-1 rounded-lg h-[55px]">
-                      <Text className="font-[Poppins-SemiBold] text-xs tracking-[-0.3px] text-gray-700 mb-1">Código de Barras:</Text>
-                      <Text className="font-[Poppins-Bold] text-base text-gray-900 leading-3">{selectedItem.barCode}</Text>
-                    </View>
-                    <View className="bg-gray-100 p-3 flex-1 rounded-lg h-[55px]">
-                      <Text className="font-[Poppins-SemiBold] text-xs tracking-[-0.3px] text-gray-700 mb-1">Unidad de Venta:</Text>
-                      <Text className="font-[Poppins-Bold] text-base text-gray-900 leading-3">{selectedItem.salesUnit} x {selectedItem.salesItemsPerUnit}</Text>
                     </View>
                   </View>
                 </View>
