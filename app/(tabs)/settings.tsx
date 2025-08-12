@@ -13,8 +13,8 @@ const Settings = () => {
   const { logout, user } = useAuth();
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [syncTime, setSyncTime] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false); // operaciones generales (logout / clear)
-  const [syncLoading, setSyncLoading] = useState(false); // estado específico para sincronización
+  const [loading, setLoading] = useState(false);
+  const [syncLoading, setSyncLoading] = useState(false);
   const [locationServicesEnabled, setLocationServicesEnabled] = useState(false);
   const { fetchUrl } = useAppStore();
   const API_BASE_URL = fetchUrl;
@@ -75,32 +75,33 @@ const Settings = () => {
   };
 
   const fetchPaymentAccounts = useCallback(async () => {
-    if (syncLoading) return; // evitar doble tap
+    if (syncLoading) return;
     setSyncLoading(true);
-    try {
-      // Agregamos un timestamp para forzar bypass de caché (aunque axios-cache-interceptor tenga data guardada).
-      const withTs = (path: string) => `${API_BASE_URL}${path}${path.includes('?') ? '&' : '?'}_ts=${Date.now()}`;
 
+    try {
       const urls = [
-        withTs('/api/BankAccounts/PayCheque'),
-        withTs('/api/BankAccounts/PayEfectivo'),
-        withTs('/api/BankAccounts/PayTranferencia'),
-        withTs('/api/BankAccounts/PayCreditCards'),
-        withTs('/sap/items/categories')
+        '/api/BankAccounts/PayCheque',
+        '/api/BankAccounts/PayEfectivo',
+        '/api/BankAccounts/PayTranferencia',
+        '/api/BankAccounts/PayCreditCards',
+        '/sap/items/categories'
       ];
 
-      const results = await Promise.allSettled(urls.map(url => api.get(url, {
-        baseURL: API_BASE_URL,
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${user?.token}`
-        },
-        // Forzamos no usar caché para esta petición puntual.
-        cache: {
-          ttl: 0, // sin vida útil
-          interpretHeader: false,
-        },
-      })));
+      const results = await Promise.allSettled(
+        urls.map(url =>
+          api.get(url, {
+            baseURL: API_BASE_URL,
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${user?.token}`
+            },
+            cache: {
+              ttl: Infinity,    // cache infinito
+              override: true,   // siempre actualizar desde servidor
+            },
+          })
+        )
+      );
 
       const chequeRes = results[0].status === 'fulfilled' ? results[0].value : null;
       const efectivoRes = results[1].status === 'fulfilled' ? results[1].value : null;
@@ -114,8 +115,10 @@ const Settings = () => {
       const nowStr = new Date().toLocaleString();
       setSyncTime(nowStr);
       await AsyncStorage.setItem('lastSyncTime', nowStr);
+
       console.log('Información de pago sincronizada (forzada)');
       Alert.alert('Sincronización completa', 'Los datos se han actualizado.');
+
     } catch (err) {
       console.error('Error al cargar datos de cuentas:', err);
       Alert.alert('Error', 'No se pudieron sincronizar los datos. Intenta nuevamente.');
@@ -123,6 +126,7 @@ const Settings = () => {
       setSyncLoading(false);
     }
   }, [API_BASE_URL, user?.token, syncLoading]);
+
 
   return (
     <ScrollView className="flex-1 bg-white">

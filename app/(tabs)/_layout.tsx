@@ -1,5 +1,5 @@
 import { createDrawerNavigator, DrawerContentScrollView, DrawerItemList } from '@react-navigation/drawer';
-import { useAuth, AuthProvider } from '@/context/auth';
+import { useAuth } from '@/context/auth';
 import { View, Text, Platform } from 'react-native';
 
 import ProtectedLayout from '../ProtectedLayout';
@@ -24,76 +24,68 @@ export default function Layout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <BottomSheetModalProvider>
-        <AuthProvider>
-          <ProtectedLayout>
-            <DrawerWithCustomContent />
-          </ProtectedLayout>
-        </AuthProvider>
+        <ProtectedLayout>
+          <Drawer.Navigator
+            screenOptions={{
+              headerShown: true,
+              drawerActiveTintColor: '#000',
+              drawerStyle: Platform.select({
+                ios: { backgroundColor: '#fff' },
+                android: {},
+              }),
+              headerStyle: {
+                shadowColor: 'transparent',
+                elevation: 0,
+                borderBottomWidth: 0,
+              },
+              headerTitleStyle: {
+                fontFamily: 'Poppins-SemiBold',
+                letterSpacing: -0.6,
+              },
+              drawerLabelStyle: {
+                fontFamily: 'Poppins-Medium',
+                fontSize: 16,
+                letterSpacing: -0.6,
+              },
+            }}
+            drawerContent={(props) => <CustomDrawerContent {...props} />}
+          >
+            <Drawer.Screen
+              name="index"
+              component={IndexScreen}
+              options={{
+                title: 'Inicio',
+                drawerIcon: ({ color }) => <HomeIcon size={26} color={color} />,
+              }}
+            />
+            <Drawer.Screen
+              name="explore"
+              component={ExploreScreen}
+              options={{
+                title: 'Pedidos',
+                drawerIcon: ({ color }) => <OrderIcon size={26} color={color} />,
+              }}
+            />
+            <Drawer.Screen
+              name="invoices"
+              component={InvoicesScreen}
+              options={{
+                title: 'Cobros',
+                drawerIcon: ({ color }) => <InvoicesIcon size={26} color={color} />,
+              }}
+            />
+            <Drawer.Screen
+              name="settings"
+              component={SettingsScreen}
+              options={{
+                title: 'Ajustes',
+                drawerIcon: ({ color }) => <SettingsIcon size={26} color={color} />,
+              }}
+            />
+          </Drawer.Navigator>
+        </ProtectedLayout>
       </BottomSheetModalProvider>
     </GestureHandlerRootView>
-  );
-}
-
-function DrawerWithCustomContent() {
-  return (
-    <Drawer.Navigator
-      screenOptions={{
-        headerShown: true,
-        drawerActiveTintColor: '#000',
-        drawerStyle: Platform.select({
-          ios: { backgroundColor: '#fff' },
-          android: {},
-        }),
-        headerStyle: {
-          shadowColor: 'transparent',
-          elevation: 0,
-          borderBottomWidth: 0,
-        },
-        headerTitleStyle: {
-          fontFamily: 'Poppins-SemiBold',
-          letterSpacing: -0.6,
-        },
-        drawerLabelStyle: {
-          fontFamily: 'Poppins-Medium',
-          fontSize: 16,
-          letterSpacing: -0.6,
-        },
-      }}
-      drawerContent={(props) => <CustomDrawerContent {...props} />}
-    >
-      <Drawer.Screen
-        name="index"
-        component={IndexScreen}
-        options={{
-          title: 'Inicio',
-          drawerIcon: ({ color }) => <HomeIcon size={26} color={color} />,
-        }}
-      />
-      <Drawer.Screen
-        name="explore"
-        component={ExploreScreen}
-        options={{
-          title: 'Pedidos',
-          drawerIcon: ({ color }) => <OrderIcon size={26} color={color} />,
-        }}
-      />
-      <Drawer.Screen
-        name="invoices"
-        component={InvoicesScreen}
-        options={{
-          title: 'Cobros',
-          drawerIcon: ({ color }) => <InvoicesIcon size={26} color={color} />,
-        }}
-      />
-      <Drawer.Screen
-        name="settings"
-        component={SettingsScreen}
-        options={{
-          title: 'Ajustes',
-          drawerIcon: ({ color }) => <SettingsIcon size={26} color={color} />,
-        }}
-      />
-    </Drawer.Navigator>
   );
 }
 

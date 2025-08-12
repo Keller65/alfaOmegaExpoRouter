@@ -91,7 +91,7 @@ export default function RootLayout() {
                   options={{
                     headerShown: true,
                     headerTitle: () => (
-                      <View className='flex-row items-center bg-[#f0f0f0] rounded-[20px] relative'>
+                      <View className='flex-row items-center bg-[#f0f0f0] rounded-[20px] relative overflow-hidden'>
                         <TextInput
                           placeholder="Buscar Producto"
                           style={{

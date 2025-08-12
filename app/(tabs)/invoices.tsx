@@ -58,7 +58,7 @@ const Invoices = () => {
     setPage(1);
     setHasMore(true);
     try {
-      const url = `${fetchUrl}/api/Payments/received/${salesPersonCode}?page=1&pageSize=${PAGE_SIZE}`;
+      const url = `${fetchUrl}/api/Quotations/open/${salesPersonCode}?page=1&pageSize=${PAGE_SIZE}`;
       const response = await axios.get<PaymentData[]>(url);
 
       setData(response.data);

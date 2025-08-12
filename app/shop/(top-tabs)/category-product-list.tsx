@@ -476,7 +476,7 @@ const CategoryProductScreen = memo(() => {
                 )}
 
                 <View className="flex-1 mt-2">
-                  <View className="bg-gray-100 p-3 rounded-2xl">
+                  <View className="p-3 rounded-2xl">
                     <Text className="font-[Poppins-SemiBold] text-base tracking-[-0.3px] text-gray-900 mb-1">Inventario</Text>
 
                     <View className='flex-row gap-2 items-center justify-between'>

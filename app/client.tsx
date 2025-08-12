@@ -6,9 +6,10 @@ import { useAppStore } from '@/state/index';
 import { Customer } from '@/types/types';
 import { FlashList } from '@shopify/flash-list';
 import ClientIcon from '../assets/icons/ClientIcon';
+import Feather from '@expo/vector-icons/Feather';
 import axios from 'axios';
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 1000;
 
 const ClientScreen = memo(() => {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -25,7 +26,7 @@ const ClientScreen = memo(() => {
   const router = useRouter();
   const setSelectedCustomer = useAppStore((state) => state.setSelectedCustomer);
   const { fetchUrl } = useAppStore();
-  const FETCH_URL = fetchUrl + "/sap/customers/";
+  const FETCH_URL = fetchUrl + "/api/customers/";
 
   const fetchCustomers = async (pageNumber: number) => {
     if (!user?.salesPersonCode || !user?.token) return;
@@ -35,7 +36,7 @@ const ClientScreen = memo(() => {
       if (pageNumber > 1) setLoadingMore(true);
 
       const res = await axios.get(
-        `${FETCH_URL}by-salesperson?slpCode=${user.salesPersonCode}&page=${pageNumber}&pageSize=${PAGE_SIZE}`,
+        `${FETCH_URL}by-sales-emp?slpCode=${user.salesPersonCode}&page=${pageNumber}&pageSize=${PAGE_SIZE}`,
         {
           headers: {
             'Content-Type': 'application/json',
@@ -198,15 +199,18 @@ const ClientScreen = memo(() => {
 
   return (
     <View className="flex-1 bg-white">
-      <View className="px-4">
-        <TextInput
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Buscar por nombre, código o RTN"
-          className="border border-gray-300 rounded-full px-6 py-3 mb-2 text-base font-[Poppins-Regular] text-black"
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
+      <View className='px-4'>
+        <View className="border border-gray-300 rounded-full px-4 mb-2 text-base font-[Poppins-Regular] text-black flex-row items-center gap-2">
+          <Feather name="search" size={20} color="#9ca3af" />
+          <TextInput
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Buscar por nombre, código o RTN"
+            className="w-[86%]"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+        </View>
       </View>
 
       <FlashList

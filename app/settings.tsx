@@ -30,13 +30,11 @@ const Settings = () => {
           setHasInvalidUrl(true)
         }
       } else if (appHost) {
-        // appHost definido pero sin hostname
         setIp('')
         setHasInvalidUrl(true)
       }
       if (appPort) setPort(appPort)
     } catch (e) {
-      // URL inválida: no crashear, solo marcar como inválida
       setIp('')
       setHasInvalidUrl(true)
     }
@@ -78,7 +76,8 @@ const Settings = () => {
           Authorization: `Bearer ${user?.token}`
         },
         cache: {
-          ttl: 1000 * 60 * 60 * 24,
+          ttl: Infinity,
+          override: true
         },
       })));
 
@@ -93,8 +92,7 @@ const Settings = () => {
         throw new Error('No se pudieron obtener los datos de una o más cuentas.');
       }
 
-      // Si los datos ya están sincronizados, solo espera 2 segundos
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 1000));
     } catch (err) {
       console.error('Error al cargar datos de cuentas:', err);
     }

@@ -7,17 +7,18 @@ import Feather from '@expo/vector-icons/Feather';
 import axios from 'axios';
 import { Asset } from 'expo-asset';
 import Constants from 'expo-constants';
-import * as FileSystem from 'expo-file-system';
-import * as Print from 'expo-print';
+import { SaveFormat, useImageManipulator } from 'expo-image-manipulator';
+import { printAsync } from 'expo-print';
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+const IMAGE = Asset.fromModule(require('@/assets/images/LogoAlfayOmega.png'))
+
 const InvoicesDetails = () => {
   const { docEntry } = useLocalSearchParams();
   const [invoiceDetails, setInvoiceDetails] = useState<PaymentData | null>(null);
-  const [logoBase64, setLogoBase64] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const { fetchUrl } = useAppStore();
   const { user } = useAuth();
@@ -29,27 +30,12 @@ const InvoicesDetails = () => {
   };
 
   useEffect(() => {
-    const loadLogo = async () => {
-      const asset = Asset.fromModule(require('@/assets/images/LogoAlfayOmega.png'));
-      await asset.downloadAsync();
-      const base64 = await FileSystem.readAsStringAsync(asset.localUri!, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-      setLogoBase64(`data:image/png;base64,${base64}`);
-    };
-
-    loadLogo();
-  }, []);
-
-  // ✅ Obtener detalles del pago
-  useEffect(() => {
     const fetchDetails = async () => {
       if (!docEntry) return;
 
       try {
         const response = await axios.get<PaymentData>(`${fetchUrl}/api/Payments/${docEntry}`);
         setInvoiceDetails(response.data);
-        console.log(response.data);
       } catch (error) {
         console.error('Error al obtener el recibo:', error);
       } finally {
@@ -60,158 +46,7 @@ const InvoicesDetails = () => {
     fetchDetails();
   }, [docEntry]);
 
-  const buildTicketHTML = (invoice: PaymentData, logo: string) => {
-    const folio = Array.isArray(docEntry)
-      ? docEntry[0]
-      : typeof docEntry === 'string'
-        ? docEntry
-        : '';
-    const dateStr = invoice.docDate
-      ? new Date(invoice.docDate).toLocaleString()
-      : '';
-
-    // Detalles según medio de pago
-    const pay = invoice.payment?.[0] ?? ({} as any);
-    let paymentExtra = '';
-    if (invoice.paymentMeans === 'Tarjeta') {
-      paymentExtra = `<div class="row"><span>Referencia</span><span>${pay.cardVoucherNum ?? 'N/D'}</span></div>`;
-    } else if (invoice.paymentMeans === 'Cheque') {
-      paymentExtra = `
-        <div class="row"><span>Banco</span><span>${pay.bankCode ?? 'N/D'}</span></div>
-        <div class="row"><span>N° Cheque</span><span>${pay.checkNumber ?? 'N/D'}</span></div>
-        <div class="row"><span>Fecha Cheque</span><span>${pay.dueDate ?? 'N/D'}</span></div>
-      `;
-    } else if (invoice.paymentMeans === 'Transferencia') {
-      paymentExtra = `
-        <div class="row"><span>Fecha</span><span>${pay.transferDate ?? 'N/D'}</span></div>
-        <div class="row"><span>Referencia</span><span>${pay.transferReference ?? 'N/D'}</span></div>
-        <div class="row"><span>Cuenta</span><span>${pay.transferAccountName ?? 'N/D'}</span></div>
-      `;
-    }
-
-    const facturasHTML = invoice.invoices
-      .map((inv) => {
-        const total = formatMoney(inv.docTotal);
-        const abono = formatMoney(inv.appliedAmount);
-        const saldoAnt = formatMoney(inv.saldoAnterior);
-        const saldoPend = formatMoney(inv.pendiente);
-
-        const fecha = inv.invoiceDate
-          ? (() => {
-            const d = new Date(inv.invoiceDate);
-            return isNaN(d.getTime()) ? 'N/D' : d.toLocaleDateString();
-          })()
-          : 'N/D';
-        return `
-          <div class="row"><span>Factura</span><span>${inv.numAtCard ?? 'N/D'}</span></div>
-          <div class="row"><span>Fecha</span><span>${fecha}</span></div>
-          <div class="row"><span>Total</span><span>L. ${total}</span></div>
-        <div class="row"><span>Saldo Ant.</span><span>L. ${saldoAnt}</span></div>
-        <div class="row"><span>Abono</span><span>L. ${abono}</span></div>
-        <div class="row"><span>Saldo Pend.</span><span>L. ${saldoPend}</span></div>
-        <hr/>
-            `;
-      })
-      .join('');
-
-    return `
-    <html>
-      <head>
-        <meta charset="utf-8" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Montserrat:wght@600&display=swap" rel="stylesheet">
-        <style>
-          @page { size: 80mm auto; margin: 0; }
-          * { box-sizing: border-box; }
-          body {
-            font-family: 'Inter', sans-serif;
-            background: #fff;
-            margin: 0;
-            padding: 0;
-            font-size: 12px;
-            color: #000;
-          }
-          .ticket {
-            width: 80mm;
-            height: auto;
-            padding: 8px 8px 12px;
-            margin: 0 auto;
-          }
-          img {
-            max-width: 80%;
-            margin: 12px auto 12px;
-            display: block;
-          }
-          .center { text-align: center; }
-          .start { text-align: left; width: 100%; margin-top: 8px; }
-          .bold { font-weight: 600; }
-          .muted { color: #555; }
-          .row { display: flex; justify-content: space-between; gap: 8px; }
-          .section-title {
-            font-family: 'Montserrat', sans-serif;
-            font-weight: 600;
-            margin: 8px 0 4px;
-            text-transform: uppercase;
-          }
-          .divider {
-            height: 1px;
-            background: #000;
-            opacity: 0.2;
-            margin: 8px 0;
-          }
-          hr {
-            border: none;
-            border-top: 1px dashed #000;
-            margin: 6px 0;
-          }
-          .foot {
-            margin-top: 30px;
-            text-align: center;
-            font-size: 11px;
-            color: #444;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="ticket">
-          <div class="center">
-            <img src="${logo}" />
-            <div class="bold" style="font-family:'Montserrat', sans-serif; font-size:18px; margin-bottom: 34px;">Grupo Alfa & Omega</div>
-          </div>
-          <div class="start">
-            <div class="row"><span class="bold">Folio</span><span>${folio || 'N/D'}</span></div>
-            <div class="row"><span class="bold">Cliente</span><span>${invoice.cardCode} - ${invoice.cardName}</span></div>
-            <div class="row"><span class="bold">Vendedor</span><span>${user?.fullName ?? ''}</span></div>
-            <div class="row"><span class="bold">Fecha</span><span>${dateStr}</span></div>
-          </div>
-          <div class="divider"></div>
-          <div class="center section-title">Recibo de Cobros</div>
-          <div class="divider"></div>
-          <div class="section-title">Facturas</div>
-          ${facturasHTML}
-          <div class="section-title">Pago</div>
-          <div class="row"><span>Método</span><span>${invoice.paymentMeans}</span></div>
-          ${paymentExtra}
-          <div class="row bold"><span>Total pagado</span><span>L. ${formatMoney(invoice.total)}</span></div>
-          <div class="divider"></div>
-          <div class="foot">
-            ¡Gracias por su pago!<br/>
-            Dudas o reclamos por inconsistencias con su saldo,<br/> llamar al 9458-7168
-          </div>
-        </div>
-      </body>
-    </html>
-  `;
-  };
-
-  const handlePrint = async () => {
-    if (!invoiceDetails || !logoBase64) return;
-    const html = buildTicketHTML(invoiceDetails, logoBase64);
-    try {
-      await Print.printAsync({ html });
-    } catch (error) {
-      console.error('Error al imprimir:', error);
-    }
-  };
+  const context = useImageManipulator(IMAGE.uri);
 
   if (loading) {
     return (
@@ -229,14 +64,169 @@ const InvoicesDetails = () => {
     );
   }
 
+  async function generateAndPrint() {
+    try {
+      if (!invoiceDetails) return;
+
+      await IMAGE.downloadAsync();
+      const manipulatedImage = await context.renderAsync();
+      const result = await manipulatedImage.saveAsync({ base64: true, format: SaveFormat.PNG, compress: 0.7 });
+      const logo = `data:image/png;base64,${result.base64}`;
+
+      const folio = Array.isArray(docEntry)
+        ? docEntry[0]
+        : typeof docEntry === 'string'
+          ? docEntry
+          : '';
+      const dateStr = invoiceDetails.docDate
+        ? new Date(invoiceDetails.docDate).toLocaleString()
+        : '';
+
+      const pay = invoiceDetails.payment?.[0] ?? ({} as any);
+      let paymentExtra = '';
+      if (invoiceDetails.paymentMeans === 'Tarjeta') {
+        paymentExtra = `<div class="row"><span>Referencia</span><span>${pay.cardVoucherNum ?? 'N/D'}</span></div>`;
+      } else if (invoiceDetails.paymentMeans === 'Cheque') {
+        paymentExtra = `
+          <div class="row"><span>Banco</span><span>${pay.bankCode ?? 'N/D'}</span></div>
+          <div class="row"><span>N° Cheque</span><span>${pay.checkNumber ?? 'N/D'}</span></div>
+          <div class="row"><span>Fecha Cheque</span><span>${pay.dueDate ?? 'N/D'}</span></div>
+        `;
+      } else if (invoiceDetails.paymentMeans === 'Transferencia') {
+        paymentExtra = `
+          <div class="row"><span>Fecha</span><span>${pay.transferDate ?? 'N/D'}</span></div>
+          <div class="row"><span>Referencia</span><span>${pay.transferReference ?? 'N/D'}</span></div>
+          <div class="row"><span>Cuenta</span><span>${pay.transferAccountName ?? 'N/D'}</span></div>
+        `;
+      }
+
+      const facturasHTML = invoiceDetails.invoices
+        .map((inv) => {
+          const total = formatMoney(inv.docTotal);
+          const abono = formatMoney(inv.appliedAmount);
+          const saldoAnt = formatMoney(inv.saldoAnterior);
+          const saldoPend = formatMoney(inv.pendiente);
+
+          const fecha = inv.invoiceDate
+            ? (() => {
+              const d = new Date(inv.invoiceDate);
+              return isNaN(d.getTime()) ? 'N/D' : d.toLocaleDateString();
+            })()
+            : 'N/D';
+          return `
+            <div class="row"><span>Factura</span><span>${inv.numAtCard ?? 'N/D'}</span></div>
+            <div class="row"><span>Fecha</span><span>${fecha}</span></div>
+            <div class="row"><span>Total</span><span>L. ${total}</span></div>
+            <div class="row"><span>Saldo Ant.</span><span>L. ${saldoAnt}</span></div>
+            <div class="row"><span>Abono</span><span>L. ${abono}</span></div>
+            <div class="row"><span>Saldo Pend.</span><span>L. ${saldoPend}</span></div>
+            <hr/>
+          `;
+        })
+        .join('');
+
+      const html = `
+        <html>
+          <head>
+            <meta charset="utf-8" />
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Montserrat:wght@600&display=swap" rel="stylesheet">
+            <style>
+              @page { size: 80mm auto; margin: 0; }
+              * { box-sizing: border-box; }
+              body {
+                font-family: 'Inter', sans-serif;
+                background: #fff;
+                margin: 0;
+                padding: 0;
+                font-size: 12px;
+                color: #000;
+              }
+              .ticket {
+                width: 80mm;
+                height: auto;
+                padding: 8px 8px 12px;
+                margin: 0 auto;
+              }
+              img {
+                max-width: 80%;
+                margin: 12px auto 12px;
+                display: block;
+                background: white;
+              }
+              .center { text-align: center; }
+              .start { text-align: left; width: 100%; margin-top: 8px; }
+              .bold { font-weight: 600; }
+              .muted { color: #555; }
+              .row { display: flex; justify-content: space-between; gap: 8px; }
+              .section-title {
+                font-family: 'Montserrat', sans-serif;
+                font-weight: 600;
+                margin: 8px 0 4px;
+                text-transform: uppercase;
+              }
+              .divider {
+                height: 1px;
+                background: #000;
+                opacity: 0.2;
+                margin: 8px 0;
+              }
+              hr {
+                border: none;
+                border-top: 1px dashed #000;
+                margin: 6px 0;
+              }
+              .foot {
+                margin-top: 30px;
+                text-align: center;
+                font-size: 11px;
+                color: #444;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="ticket">
+              <div class="center">
+                <img src="${logo}" />
+                <div class="bold" style="font-family:'Montserrat', sans-serif; font-size:18px; margin-bottom: 34px;">Grupo Alfa & Omega</div>
+              </div>
+              <div class="start">
+                <div class="row"><span class="bold">Folio</span><span>${folio || 'N/D'}</span></div>
+                <div class="row"><span class="bold">Cliente</span><span>${invoiceDetails.cardCode} - ${invoiceDetails.cardName}</span></div>
+                <div class="row"><span class="bold">Vendedor</span><span>${user?.fullName ?? ''}</span></div>
+                <div class="row"><span class="bold">Fecha</span><span>${dateStr}</span></div>
+              </div>
+              <div class="divider"></div>
+              <div class="center section-title">Recibo de Cobros</div>
+              <div class="divider"></div>
+              <div class="section-title">Facturas</div>
+              ${facturasHTML}
+              <div class="section-title">Pago</div>
+              <div class="row"><span>Método</span><span>${invoiceDetails.paymentMeans}</span></div>
+              ${paymentExtra}
+              <div class="row bold"><span>Total pagado</span><span>L. ${formatMoney(invoiceDetails.total)}</span></div>
+              <div class="divider"></div>
+              <div class="foot">
+                ¡Gracias por su pago!<br/>
+                Dudas o reclamos por inconsistencias con su saldo,<br/> llamar al 9458-7168
+              </div>
+            </div>
+          </body>
+        </html>
+      `;
+
+      await printAsync({ html });
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  }
+
   return (
     <SafeAreaView className="bg-white flex-1" style={{ paddingTop: -Constants.statusBarHeight }}>
       <ScrollView style={{ paddingHorizontal: 16, position: 'relative' }} showsVerticalScrollIndicator={false}>
-        {/* Cliente */}
         <View className='flex-row justify-between items-center w-full'>
           <Text className="text-xl font-[Poppins-SemiBold] mt-4 mb-2">Cliente</Text>
 
-          <TouchableOpacity onPress={handlePrint} className="z-50">
+          <TouchableOpacity onPress={generateAndPrint} className="z-50">
             <Feather name="printer" size={28} color="black" />
           </TouchableOpacity>
         </View>
@@ -252,7 +242,6 @@ const InvoicesDetails = () => {
           </View>
         </View>
 
-        {/* Facturas Abonadas */}
         <Text className="text-xl font-[Poppins-SemiBold] mb-2">Facturas Abonadas</Text>
         {invoiceDetails.invoices.map((inv) => (
           <View
@@ -287,7 +276,6 @@ const InvoicesDetails = () => {
           </View>
         ))}
 
-        {/* Información de Pago */}
         <Text className="text-xl font-[Poppins-SemiBold] mt-4 mb-2">Información de Pago</Text>
         <View className="bg-white rounded-2xl h-fit overflow-hidden border border-gray-200 shadow-sm">
           <View className="bg-yellow-300 p-2">
