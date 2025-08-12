@@ -46,7 +46,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = async () => {
     setUser(null);
     await AsyncStorage.removeItem('user');
-    // await AsyncStorage.removeItem('biometricUser');
+    // await AsyncStorage.multiRemove(['biometricUser', 'user']);
     console.log('Sesión cerrada');
   };
 

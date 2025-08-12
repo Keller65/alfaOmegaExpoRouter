@@ -1,13 +1,14 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { View, ActivityIndicator, Text, StyleSheet, Button } from 'react-native';
-import axios from 'axios';
-import slugify from 'slugify';
 import { useAuth } from '@/context/auth';
 import { useAppStore } from '@/state';
+import api from '@/lib/api';
+import slugify from 'slugify';
 
 const Tab = createMaterialTopTabNavigator();
 import CategoryProductScreen from './(top-tabs)/category-product-list';
+import NavigateOrder from '@/components/NavigateOrder/page';
 
 interface ProductCategory {
   code: string;
@@ -17,11 +18,11 @@ interface ProductCategory {
 
 export default function TopTabNavigatorLayout() {
   const { user } = useAuth();
-  const { selectedCustomer } = useAppStore();
+  const { selectedCustomer, products } = useAppStore();
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const FETCH_URL = process.env.EXPO_PUBLIC_API_URL + "/sap/items/categories";
+  const { fetchUrl } = useAppStore();
 
   const priceListNum = selectedCustomer?.priceListNum?.toString() || '1';
 
@@ -41,7 +42,18 @@ export default function TopTabNavigatorLayout() {
     setError(null);
 
     try {
-      const response = await axios.get<Array<{ code: string, name: string }>>(FETCH_URL, { headers });
+      const response = await api.get<Array<{ code: string, name: string }>>(
+        '/sap/items/categories',
+        {
+          baseURL: fetchUrl,
+          headers,
+          cache: {
+            ttl: 1000 * 60 * 60 * 24, // 24 horas
+          },
+        }
+      );
+
+      console.log(response.cached ? 'Categorias cargadas desde CACHE' : 'Categorias cargadas desde RED');
 
       const formattedCategories: ProductCategory[] = response.data.map(category => ({
         code: category.code,
@@ -129,7 +141,7 @@ export default function TopTabNavigatorLayout() {
   }
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, position: 'relative' }}>
       <Tab.Navigator
         initialRouteName={categories[0]?.slug || 'todas'}
         screenOptions={{
@@ -148,7 +160,8 @@ export default function TopTabNavigatorLayout() {
           tabBarLabelStyle: {
             fontSize: 12,
             width: 230,
-            fontWeight: 'bold',
+            fontFamily: 'Poppins-SemiBold',
+            letterSpacing: -0.3,
           },
           tabBarPressColor: 'transparent',
           tabBarScrollEnabled: true,
@@ -156,6 +169,8 @@ export default function TopTabNavigatorLayout() {
       >
         {tabScreens}
       </Tab.Navigator>
+
+      {products.length > 0 && <NavigateOrder />}
     </View>
   );
 }

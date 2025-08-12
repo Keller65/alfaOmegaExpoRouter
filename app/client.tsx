@@ -1,53 +1,68 @@
 import { useCallback, useEffect, useState, memo } from 'react';
-import { View, Text, ActivityIndicator, TouchableOpacity, Alert, TextInput } from 'react-native';
-import ClientIcon from '../assets/icons/ClientIcon';
+import { View, Text, ActivityIndicator, TouchableOpacity, Alert, TextInput, RefreshControl, } from 'react-native';
 import { useAuth } from '@/context/auth';
 import { useRouter } from 'expo-router';
-import axios from 'axios';
 import { useAppStore } from '@/state/index';
 import { Customer } from '@/types/types';
 import { FlashList } from '@shopify/flash-list';
+import ClientIcon from '../assets/icons/ClientIcon';
+import axios from 'axios';
+
+const PAGE_SIZE = 20;
 
 const ClientScreen = memo(() => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
   const { user } = useAuth();
   const router = useRouter();
-
   const setSelectedCustomer = useAppStore((state) => state.setSelectedCustomer);
-  const FETCH_URL = process.env.EXPO_PUBLIC_API_URL + "/sap/customers/";
+  const { fetchUrl } = useAppStore();
+  const FETCH_URL = fetchUrl + "/sap/customers/";
+
+  const fetchCustomers = async (pageNumber: number) => {
+    if (!user?.salesPersonCode || !user?.token) return;
+
+    try {
+      if (pageNumber === 1 && !refreshing) setLoading(true);
+      if (pageNumber > 1) setLoadingMore(true);
+
+      const res = await axios.get(
+        `${FETCH_URL}by-salesperson?slpCode=${user.salesPersonCode}&page=${pageNumber}&pageSize=${PAGE_SIZE}`,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${user.token}`,
+          },
+        }
+      );
+
+      const newCustomers = res.data.items || [];
+
+      setCustomers(prev =>
+        pageNumber === 1 ? newCustomers : [...prev, ...newCustomers]
+      );
+
+      setHasMore(newCustomers.length === PAGE_SIZE);
+    } catch (err: any) {
+      console.error('Error al cargar clientes:', err);
+      setError(err.response?.data?.message || err.message || 'Error desconocido.');
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    if (!user?.salesPersonCode || !user?.token) {
-      setLoading(false);
-      setError('No se ha iniciado sesión o el token no está disponible.');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    axios.get(`${FETCH_URL}by-salesperson?slpCode=${user.salesPersonCode}&page=1&pageSize=20`, {
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${user.token}`,
-      },
-    })
-      .then((res) => {
-        setCustomers(res.data.items || []);
-        setFilteredCustomers(res.data.items || []);
-        console.log('Clientes cargados:', res.data.items);
-      })
-      .catch((err) => {
-        console.error('Error al cargar clientes:', err);
-        setError(err.response?.data?.message || err.message || 'Error desconocido al cargar clientes.');
-        setCustomers([]);
-        setFilteredCustomers([]);
-      })
-      .finally(() => setLoading(false));
+    fetchCustomers(1);
   }, [user?.salesPersonCode, user?.token]);
 
   useEffect(() => {
@@ -55,7 +70,9 @@ const ClientScreen = memo(() => {
       setFilteredCustomers(customers);
       return;
     }
+
     const lowerSearch = search.toLowerCase();
+
     setFilteredCustomers(
       customers.filter(
         (c) =>
@@ -76,21 +93,24 @@ const ClientScreen = memo(() => {
           pathname: '/shop',
           params: {
             cardCode: customer.cardCode,
-            priceListNum: customer.priceListNum
+            priceListNum: customer.priceListNum,
           },
         });
       } catch (err) {
         console.error('Error al navegar:', err);
-        Alert.alert('Error de navegación', 'No se pudo abrir la pantalla de pedido. Por favor, inténtalo de nuevo.');
+        Alert.alert(
+          'Error de navegación',
+          'No se pudo abrir la pantalla de pedido. Por favor, inténtalo de nuevo.'
+        );
       }
     },
     [router, setSelectedCustomer]
   );
 
   const renderCustomerItem = useCallback(
-    ({ item: customer }: { item: Customer }) => (
+    ({ item }: { item: Customer }) => (
       <TouchableOpacity
-        onPress={() => handleCustomerPress(customer)}
+        onPress={() => handleCustomerPress(item)}
         className="flex-row items-center gap-3 px-4 my-2"
       >
         <View className="bg-[#fcde41] w-[50px] h-[50px] items-center justify-center rounded-full">
@@ -99,15 +119,17 @@ const ClientScreen = memo(() => {
 
         <View className="flex-1 justify-center gap-2">
           <Text className="font-[Poppins-SemiBold] text-lg text-black tracking-[-0.3px] leading-4">
-            {customer.cardName}
+            {item.cardName}
           </Text>
 
           <View className="flex-row gap-2">
             <Text className="text-gray-600 font-[Poppins-SemiBold] tracking-[-0.3px]">
-              Código: <Text className="font-[Poppins-Regular] tracking-[-0.3px]">{customer.cardCode}</Text>
+              Código:{' '}
+              <Text className="font-[Poppins-Regular]">{item.cardCode}</Text>
             </Text>
             <Text className="text-gray-600 font-[Poppins-SemiBold] tracking-[-0.3px]">
-              RTN: <Text className="font-[Poppins-Regular] tracking-[-0.3px]">{customer.federalTaxID}</Text>
+              RTN:{' '}
+              <Text className="font-[Poppins-Regular]">{item.federalTaxID}</Text>
             </Text>
           </View>
         </View>
@@ -116,19 +138,37 @@ const ClientScreen = memo(() => {
     [handleCustomerPress]
   );
 
+  const loadMore = async () => {
+    if (!loadingMore && hasMore && !search.trim()) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      await fetchCustomers(nextPage);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    setPage(1);
+    await fetchCustomers(1);
+  };
+
   if (!user?.token) {
     return (
       <View className="flex-1 justify-center items-center bg-white px-5">
-        <Text className="text-center text-red-500 text-base font-normal">No has iniciado sesión o tu sesión ha expirado.</Text>
+        <Text className="text-center text-red-500 text-base font-normal">
+          No has iniciado sesión o tu sesión ha expirado.
+        </Text>
       </View>
     );
   }
 
-  if (loading) {
+  if (loading && !refreshing) {
     return (
       <View className="flex-1 justify-center items-center bg-white">
-        <ActivityIndicator size="large" color="#007bff" />
-        <Text className="mt-3 text-gray-700 text-base font-normal">Cargando clientes...</Text>
+        <ActivityIndicator size="large" color="#000" />
+        <Text className="mt-3 text-gray-700 text-base font-normal">
+          Cargando clientes...
+        </Text>
       </View>
     );
   }
@@ -136,16 +176,22 @@ const ClientScreen = memo(() => {
   if (error) {
     return (
       <View className="flex-1 justify-center items-center bg-white px-5">
-        <Text className="text-red-500 text-base font-normal text-center mb-2">{error}</Text>
-        <Text className="text-gray-500 text-sm text-center">Tu sesión ha expirado. Por favor, inicia sesión nuevamente</Text>
+        <Text className="text-red-500 text-base font-normal text-center mb-2">
+          {error}
+        </Text>
+        <Text className="text-gray-500 text-sm text-center">
+          Tu sesión ha expirado. Por favor, inicia sesión nuevamente
+        </Text>
       </View>
     );
   }
 
-  if (customers.length === 0) {
+  if (customers.length === 0 && !loading) {
     return (
       <View className="flex-1 justify-center items-center bg-white px-5">
-        <Text className="text-gray-500 text-base font-normal text-center">No se encontraron clientes asociados a tu cuenta.</Text>
+        <Text className="text-gray-500 text-base font-normal text-center">
+          No se encontraron clientes asociados a tu cuenta.
+        </Text>
       </View>
     );
   }
@@ -168,9 +214,29 @@ const ClientScreen = memo(() => {
         renderItem={renderCustomerItem}
         keyExtractor={(item) => item.cardCode}
         estimatedItemSize={80}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.3}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#000']}
+            tintColor="#000"
+          />
+        }
+        ListFooterComponent={
+          loadingMore ? (
+            <View className="py-6 items-center justify-center">
+              <ActivityIndicator size="small" color="#000" />
+              <Text className="text-gray-500 mt-2">Cargando más clientes...</Text>
+            </View>
+          ) : null
+        }
         ListEmptyComponent={
           <View className="justify-center items-center py-10">
-            <Text className="text-gray-500 text-base font-normal text-center">No se encontraron clientes con ese criterio.</Text>
+            <Text className="text-gray-500 text-base font-normal text-center">
+              No se encontraron clientes con ese criterio.
+            </Text>
           </View>
         }
       />

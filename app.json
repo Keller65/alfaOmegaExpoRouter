@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "alfaOmegaExpoRouter",
+    "name": "Alfa & Omega",
     "slug": "alfaOmegaExpoRouter",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -34,7 +34,8 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
-      ]
+      ],
+      "expo-audio"
     ],
     "experiments": {
       "typedRoutes": true

@@ -31,7 +31,7 @@ extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
 }
 expoAutolinking.useExpoModules()
 
-rootProject.name = 'alfaOmegaExpoRouter'
+rootProject.name = 'Alfa & Omega'
 
 expoAutolinking.useExpoVersionCatalog()
 

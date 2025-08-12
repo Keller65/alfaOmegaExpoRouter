@@ -1,7 +1,3 @@
-// export default function TabIndex() {
-//   return null; // O un texto introductorio si quieres
-// }
-
 import { useRouter } from 'expo-router';
 import { useAppStore } from '@/state';
 import { useEffect } from 'react';

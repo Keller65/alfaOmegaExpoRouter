@@ -1,7 +1,7 @@
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { Customer, Invoice, ProductDiscount } from '@/types/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ProductDiscount } from '@/types/types';
+import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
 
 type CartItem = ProductDiscount & {
   quantity: number;
@@ -15,14 +15,36 @@ type CartItem = ProductDiscount & {
   }[];
 };
 
-interface Customer {
-  cardCode: string;
-  cardName: string;
-  federalTaxID: string;
-  priceListNum: string
+// Customer importado desde types
+
+export interface SelectedInvoice extends Invoice {
+  paidAmount: number;
 }
 
 interface AppStoreState {
+  // Estado NO persistente para datos del formulario de pago
+  paymentForm: {
+    method: string | null;
+    amount: string;
+    reference: string;
+    date: Date;
+    bank: string;
+    bankName: string;
+  };
+  setPaymentForm: (form: Partial<{
+    method: string | null;
+    amount: string;
+    reference: string;
+    date: Date;
+    bank: string;
+    bankName: string;
+  }>) => void;
+  savePaymentForm: () => void;
+  clearPaymentForm: () => void;
+  // Estado NO persistente: cliente seleccionado para módulo de facturas (igual a selectedCustomer pero independiente)
+  selectedCustomerInvoices: Customer | null;
+  setSelectedCustomerInvoices: (customer: Customer | null) => void;
+  clearSelectedCustomerInvoices: () => void;
   products: CartItem[];
   addProduct: (productToAdd: Omit<CartItem, 'total'>) => void;
   updateQuantity: (itemCode: string, quantity: number, newPrice?: number) => void;
@@ -45,6 +67,19 @@ interface AppStoreState {
   lastOrderDocEntry: number | null;
   setLastOrderDocEntry: (docEntry: number) => void;
   clearLastOrderDocEntry: () => void;
+
+  appHost: string;
+  appPort: string;
+  fetchUrl: string;
+  setAppHost: (host: string) => void;
+  setAppPort: (port: string) => void;
+  updateFetchUrl: () => void;
+  clearAppConnection: () => void;
+
+  selectedInvoices: SelectedInvoice[];
+  addInvoice: (invoice: Invoice, paidAmount: number) => void;
+  removeInvoice: (invoiceId: string) => void;
+  clearInvoices: () => void;
 }
 
 export const useAppStore = create<AppStoreState>()(
@@ -56,12 +91,51 @@ export const useAppStore = create<AppStoreState>()(
       rawSearchText: '',
       debouncedSearchText: '',
       lastOrderDocEntry: null,
+      appHost: '',
+      appPort: '',
+      fetchUrl: '',
+      selectedInvoices: [],
+      selectedCustomerInvoices: null,
+      // Estado NO persistente para datos del formulario de pago
+      paymentForm: {
+        method: null,
+        amount: '',
+        reference: '',
+        date: new Date(),
+        bank: '',
+        bankName: '',
+      },
+      setSelectedCustomerInvoices: (customer) => set({ selectedCustomerInvoices: customer }),
+      clearSelectedCustomerInvoices: () => set({ selectedCustomerInvoices: null }),
+      setPaymentForm: (form) => {
+        set((state) => ({
+          paymentForm: {
+            ...state.paymentForm,
+            ...form,
+          },
+        }));
+      },
+      savePaymentForm: () => {
+        const { paymentForm } = get();
+        console.log('Datos del formulario de pago:', paymentForm);
+      },
+      clearPaymentForm: () => {
+        set({
+          paymentForm: {
+            method: null,
+            amount: '',
+            reference: '',
+            date: new Date(),
+            bank: '',
+            bankName: '',
+          }
+        });
+      },
 
       addProduct: (productToAdd) => {
         const products = get().products;
         const existingIndex = products.findIndex(p => p.itemCode === productToAdd.itemCode);
         const updatedProducts = [...products];
-
         const newQuantity = productToAdd.quantity;
         const unitPrice = productToAdd.unitPrice;
         const newTotal = unitPrice * newQuantity;
@@ -86,7 +160,6 @@ export const useAppStore = create<AppStoreState>()(
             total: newTotal,
           });
         }
-
         set({ products: updatedProducts });
       },
 
@@ -101,7 +174,6 @@ export const useAppStore = create<AppStoreState>()(
             const product = products[index];
             const actualUnitPrice = newPrice !== undefined ? newPrice : product.unitPrice;
             const total = actualUnitPrice * quantity;
-
             const updatedProducts = [...products];
             updatedProducts[index] = {
               ...product,
@@ -122,7 +194,7 @@ export const useAppStore = create<AppStoreState>()(
       clearCart: () => set({ products: [] }),
 
       setSelectedCustomer: (customer) => set({ selectedCustomer: customer }),
-      clearSelectedCustomer: () => set({ selectedCustomer: null }),
+      clearSelectedCustomer: () => set({ selectedCustomer: null, selectedCustomerInvoices: null }),
 
       setAllProductsCache: (products) => set({ allProductsCache: products }),
       clearAllProductsCache: () => set({ allProductsCache: [] }),
@@ -132,10 +204,60 @@ export const useAppStore = create<AppStoreState>()(
 
       setLastOrderDocEntry: (docEntry: number) => set({ lastOrderDocEntry: docEntry }),
       clearLastOrderDocEntry: () => set({ lastOrderDocEntry: null }),
+
+      setAppHost: (host) => {
+        set({ appHost: host });
+        get().updateFetchUrl();
+      },
+      setAppPort: (port) => {
+        set({ appPort: port });
+        get().updateFetchUrl();
+      },
+      updateFetchUrl: () => {
+        const { appHost, appPort } = get();
+        const url = `${appHost}${appPort ? `:${appPort}` : ''}`;
+        set({ fetchUrl: url });
+      },
+      clearAppConnection: () => {
+        set({ appHost: '', appPort: '', fetchUrl: '' });
+      },
+
+      addInvoice: (invoice, paidAmount) => {
+        const invoices = get().selectedInvoices;
+        const existingInvoiceIndex = invoices.findIndex(inv => inv.numAtCard === invoice.numAtCard);
+
+        const newSelectedInvoice = {
+          ...invoice,
+          paidAmount,
+        };
+
+        let updatedInvoices = [...invoices];
+
+        if (existingInvoiceIndex > -1) {
+          updatedInvoices[existingInvoiceIndex] = newSelectedInvoice;
+        } else {
+          updatedInvoices.push(newSelectedInvoice);
+        }
+
+        set({ selectedInvoices: updatedInvoices });
+      },
+
+      removeInvoice: (invoiceId) => {
+        set((state) => ({
+          selectedInvoices: state.selectedInvoices.filter(inv => inv.numAtCard !== invoiceId),
+        }));
+      },
+
+      clearInvoices: () => set({ selectedInvoices: [] }),
     }),
     {
       name: 'app-store',
       storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => {
+        // Excluir estados NO persistentes
+        const { selectedInvoices, selectedCustomerInvoices, paymentForm, ...rest } = state;
+        return rest;
+      },
     }
   )
 );

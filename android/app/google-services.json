@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "478998825814",
+    "project_id": "alfa-y-omega-247ef",
+    "storage_bucket": "alfa-y-omega-247ef.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:478998825814:android:558128a078b130f56ba4f7",
+        "android_client_info": {
+          "package_name": "com.aerley_adkins2.alfaOmegaExpoRouter"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA7NqiFB9gytcXmbVXU6p7xDGFlajoDwaA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

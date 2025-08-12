@@ -81,3 +81,166 @@ export interface OrderDataType {
   salesPersonCode: number;
   lines: OrderLineType[];
 }
+
+export interface PaymentData {
+  docEntry: number;
+  docNum: number;
+  cardCode: string;
+  cardName: string;
+  docDate: string; // ISO date string
+  total: number;
+  paymentMeans: 'Tarjeta' | 'Efectivo' | 'Transferencia' | 'Cheque';
+  cash: number;
+  transfer: number;
+  check: number;
+  credit: number;
+  payment: {
+    transferDate: string | null;
+    transferReference: string | null;
+    transferAccountName: string;
+    dueDate: string | null;
+    checkNumber: string | null;
+    bankCode: string | null;
+    checkSum: number | null;
+    cardVoucherNum: string | null;
+    cardCreditSum: number;
+  }[];
+  invoices: {
+    invoiceDocEntry: number;
+    invoiceDocNum: number;
+    appliedAmount: number;
+    invoiceDate: string; // ISO date string
+    numAtCard: string;
+    docTotal: number;
+    saldoAnterior: number;
+    pendiente: number;
+  }[];
+}
+
+export interface Invoice {
+  docEntry: string;
+  docDate: string;
+  numAtCard: string;
+  docTotal: number;
+  balanceDue: number;
+  docDueDate: string;
+};
+
+export interface Banks {
+  bankCode: string;
+  bankName: string;
+}
+
+export interface AccountPayTransderencia {
+  code: string;
+  name: string;
+}
+
+export interface AccountPayCheque {
+  bankCode: string;
+  bankName: string;
+}
+
+export interface AccountPayEfectivo {
+  slpCode: string | number;
+  CashAccount: string;
+}
+
+export interface AccountPayCreditCards {
+  creditCardCode: string;
+  creditCardName: string;
+}
+
+// POST de Cobros
+
+export interface POSTPayment {
+  cardCode: string;
+  u_SlpCode: string,
+  u_Latitud: string,
+  u_Longitud: string,
+  docDate: string,
+  cashAccount: string,
+  cashSum: number,
+  checkAccount: string,
+  transferAccount: string,
+  transferSum: number,
+  transferDate: string,
+  transferReference: string,
+  paymentChecks: [
+    {
+      dueDate: string
+      checkNumber: number,
+      countryCode: string,
+      bankCode: string,
+      checkSum: number
+    }
+  ],
+  paymentInvoices: [
+    {
+      docEntry: number,
+      sumApplied: number,
+      BalanceDue: number
+    }
+  ],
+  paymentCreditCards: [
+    {
+      creditCard: number,
+      voucherNum: string,
+      firstPaymentDue: string,
+      creditSum: number
+    }
+  ]
+}
+
+export interface IncomingPayment {
+  CardCode: string;
+  U_SlpCode: string;
+  u_Latitud?: string;
+  U_Latitud?: string;
+  u_Longitud?: string;
+  U_Longitud?: string;
+  DocDate: string;
+
+  // Efectivo
+  CashAccount?: string;
+  CashSum?: number;
+
+  // Cheque
+  CheckAccount?: string;
+  paymentChecks?: PaymentCheck[];
+
+  // Transferencia
+  TransferAccount?: string;
+  TransferSum?: number;
+  TransferDate?: string;
+  TransferReference?: string;
+
+  // Facturas asociadas
+  paymentInvoices?: PaymentInvoice[];
+
+  // Tarjeta
+  paymentCreditCards?: PaymentCreditCard[];
+}
+
+export interface PaymentCheck {
+  dueDate: string;
+  checkNumber: number;
+  CountryCode: string;
+  bankCode: string;
+  checkSum: number;
+}
+
+export interface PaymentInvoice {
+  docEntry?: number;
+  DocEntry?: number;
+  sumApplied?: number;
+  SumApplied?: number;
+  BalanceDue: number;
+}
+
+export interface PaymentCreditCard {
+  creditCard: number;
+  voucherNum: string;
+  firstPaymentDue: string;
+  creditSum: number;
+}

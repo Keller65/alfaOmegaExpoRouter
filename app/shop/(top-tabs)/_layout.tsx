@@ -1,11 +1,11 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { View, ActivityIndicator, Text, StyleSheet, Button } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
 import slugify from 'slugify';
 import { useAuth } from '@/context/auth';
-import { useAppStore } from '@/state'; // Importamos el store
+import { useAppStore } from '@/state';
+import api from '@/lib/api';
 
 const Tab = createMaterialTopTabNavigator();
 import CategoryProductScreen from './category-product-list';
@@ -25,12 +25,11 @@ interface SelectedClient {
 
 export default function TopTabNavigatorLayout() {
   const { user } = useAuth();
-  const { selectedCustomer } = useAppStore(); // Obtenemos el cliente seleccionado del store
+  const { selectedCustomer, fetchUrl } = useAppStore();
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [clientPriceList, setClientPriceList] = useState<string | undefined>(undefined);
-  const FETCH_URL = process.env.EXPO_PUBLIC_API_URL + "/sap/items/categories";
 
   useEffect(() => {
     const storeAndLoadClientData = async () => {
@@ -57,20 +56,19 @@ export default function TopTabNavigatorLayout() {
             const parsedClient: SelectedClient = JSON.parse(cachedClientData);
             setClientPriceList(parsedClient.priceListNum);
             console.log('Cliente cargado de AsyncStorage', parsedClient.cardName);
+          } else {
+            // Si no hay cliente guardado, set default priceListNum
+            setClientPriceList('1');
           }
         } catch (err) {
           console.error('Error al cargar cliente de AsyncStorage:', err);
+          setClientPriceList('1');
         }
-      }
-
-      // Establecer lista de precios por defecto si no hay ninguna
-      if (!clientPriceList) {
-        setClientPriceList(selectedCustomer?.priceListNum?.toString() || '1');
       }
     };
 
     storeAndLoadClientData();
-  }, [selectedCustomer, clientPriceList]);
+  }, [selectedCustomer]);
 
   const headers = useMemo(() => ({
     Authorization: `Bearer ${user?.token}`,
@@ -95,7 +93,18 @@ export default function TopTabNavigatorLayout() {
         return;
       }
 
-      const response = await axios.get<Array<{ code: string, name: string }>>(FETCH_URL, { headers });
+      const response = await api.get<Array<{ code: string, name: string }>>(
+        '/sap/items/categories',
+        {
+          baseURL: fetchUrl,
+          headers,
+          cache: {
+            ttl: 1000 * 60 * 60 * 24, // 24 horas
+          },
+        }
+      );
+
+      console.log(response.cached ? 'Categorias cargadas desde CACHE' : 'Categorias cargadas desde RED');
 
       const formattedCategories: ProductCategory[] = response.data.map(category => ({
         code: category.code,
@@ -130,8 +139,10 @@ export default function TopTabNavigatorLayout() {
     fetchCategories();
   }, [fetchCategories]);
 
-  const tabScreens = useMemo(() => (
-    categories.map((category) => (
+  const tabScreens = useMemo(() => {
+    if (!clientPriceList) return null;
+
+    return categories.map((category) => (
       <Tab.Screen
         key={category.code}
         name={category.slug}
@@ -142,11 +153,11 @@ export default function TopTabNavigatorLayout() {
         initialParams={{
           groupName: category.name,
           groupCode: category.code,
-          priceListNum: clientPriceList, // Usamos clientPriceList del estado
+          priceListNum: clientPriceList,
         }}
       />
-    ))
-  ), [categories, clientPriceList]);
+    ));
+  }, [categories, clientPriceList]);
 
   if (!user?.token) {
     return (
@@ -185,32 +196,40 @@ export default function TopTabNavigatorLayout() {
 
   return (
     <View style={{ flex: 1 }}>
-      <Tab.Navigator
-        initialRouteName={categories[0]?.slug || 'todas'}
-        screenOptions={{
-          tabBarActiveTintColor: '#000',
-          tabBarInactiveTintColor: 'gray',
-          tabBarIndicatorStyle: {
-            backgroundColor: '#000',
-            height: 2
-          },
-          tabBarStyle: {
-            backgroundColor: 'white',
-            elevation: 0,
-            shadowOpacity: 0,
-            borderBottomWidth: 0
-          },
-          tabBarLabelStyle: {
-            fontSize: 12,
-            width: 230,
-            fontWeight: 'bold',
-          },
-          tabBarPressColor: 'transparent',
-          tabBarScrollEnabled: true,
-        }}
-      >
-        {tabScreens}
-      </Tab.Navigator>
+      {tabScreens ? (
+        <Tab.Navigator
+          initialRouteName={categories[0]?.slug || 'todas'}
+          screenOptions={{
+            tabBarActiveTintColor: '#000',
+            tabBarInactiveTintColor: 'gray',
+            tabBarIndicatorStyle: {
+              backgroundColor: '#000',
+              height: 2
+            },
+            tabBarStyle: {
+              backgroundColor: 'white',
+              elevation: 0,
+              shadowOpacity: 0,
+              borderBottomWidth: 0
+            },
+            tabBarLabelStyle: {
+              fontSize: 12,
+              width: 230,
+              fontFamily: 'Poppins-SemiBold',
+              letterSpacing: -0.3,
+            },
+            tabBarPressColor: 'transparent',
+            tabBarScrollEnabled: true,
+          }}
+        >
+          {tabScreens}
+        </Tab.Navigator>
+      ) : (
+        <View style={styles.fullScreenCenter}>
+          <ActivityIndicator size="large" color="#000" />
+          <Text style={styles.loadingText}>Cargando datos del cliente y categorías...</Text>
+        </View>
+      )}
     </View>
   );
 }
