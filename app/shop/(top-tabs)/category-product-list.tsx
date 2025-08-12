@@ -103,7 +103,11 @@ const CategoryProductScreen = memo(() => {
     loadMore ? setLoadingMore(true) : setLoading(true);
     setError(null);
     try {
-      const headers = { Authorization: `Bearer ${user.token}`, 'Content-Type': 'application/json' };
+      const headers = {
+        Authorization: `Bearer ${user.token}`,
+        'Content-Type': 'application/json',
+        'Accept-Encoding': 'gzip'
+      };
       let url: string;
 
       if (groupCode === '0000') {
@@ -116,7 +120,9 @@ const CategoryProductScreen = memo(() => {
 
       const itemsResponse = await axios.get(url, { headers });
       const newItems = itemsResponse.data.items;
-
+      
+      console.log(itemsResponse.headers['content-encoding']);
+      
       if (forceRefresh) pagesCacheRef.current = new Map();
       pagesCacheRef.current.set(currentPage, newItems);
 

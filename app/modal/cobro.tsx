@@ -159,15 +159,16 @@ const Cobro = () => {
           'Content-Type': 'application/json'
         }
       });
-      console.log('Respuesta del servidor:', response.data);
       clearPaymentForm();
       selectedInvoices.length = 0;
       route.push({
         pathname: '/modal/successCobro',
         params: {
-          docEntry: response.data.docEntry
+          docEntry: response.data.docEntry,
+          item: JSON.stringify(response.data),
         }
       });
+      console.log('Parametro enviado: ', JSON.stringify(response.data));
     } catch (error) {
       console.error('Error al realizar cobro:', error);
     }

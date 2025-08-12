@@ -1,27 +1,33 @@
 import ReceiptIcon from '@/assets/icons/InvoicesIcon';
 import { useAuth } from '@/context/auth';
-import { useAppStore } from '@/state';
 import { PaymentData } from '@/types/types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Feather from '@expo/vector-icons/Feather';
-import axios from 'axios';
 import { Asset } from 'expo-asset';
 import Constants from 'expo-constants';
 import { SaveFormat, useImageManipulator } from 'expo-image-manipulator';
 import { printAsync } from 'expo-print';
 import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { useMemo } from 'react';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const IMAGE = Asset.fromModule(require('@/assets/images/LogoAlfayOmega.png'))
 
 const InvoicesDetails = () => {
-  const { docEntry } = useLocalSearchParams();
-  const [invoiceDetails, setInvoiceDetails] = useState<PaymentData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const { fetchUrl } = useAppStore();
+  const { item } = useLocalSearchParams<{ item?: string | string[] }>();
   const { user } = useAuth();
+
+  const invoiceDetails = useMemo<PaymentData | null>(() => {
+    const raw = Array.isArray(item) ? item[0] : item;
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw) as PaymentData;
+    } catch (e) {
+      console.error('No se pudo parsear el parámetro item:', e);
+      return null;
+    }
+  }, [item]);
 
   const formatMoney = (value: number | string | null | undefined) => {
     const num = typeof value === 'string' ? Number(value) : value ?? 0;
@@ -29,32 +35,7 @@ const InvoicesDetails = () => {
     return safe.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
-  useEffect(() => {
-    const fetchDetails = async () => {
-      if (!docEntry) return;
-
-      try {
-        const response = await axios.get<PaymentData>(`${fetchUrl}/api/Payments/${docEntry}`);
-        setInvoiceDetails(response.data);
-      } catch (error) {
-        console.error('Error al obtener el recibo:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDetails();
-  }, [docEntry]);
-
   const context = useImageManipulator(IMAGE.uri);
-
-  if (loading) {
-    return (
-      <SafeAreaView className="flex-1 justify-center items-center bg-white">
-        <ActivityIndicator size="large" color="#000" />
-      </SafeAreaView>
-    );
-  }
 
   if (!invoiceDetails) {
     return (
@@ -73,11 +54,7 @@ const InvoicesDetails = () => {
       const result = await manipulatedImage.saveAsync({ base64: true, format: SaveFormat.PNG, compress: 0.7 });
       const logo = `data:image/png;base64,${result.base64}`;
 
-      const folio = Array.isArray(docEntry)
-        ? docEntry[0]
-        : typeof docEntry === 'string'
-          ? docEntry
-          : '';
+      const folio = `${invoiceDetails.docEntry ?? ''}`;
       const dateStr = invoiceDetails.docDate
         ? new Date(invoiceDetails.docDate).toLocaleString()
         : '';
@@ -100,30 +77,37 @@ const InvoicesDetails = () => {
         `;
       }
 
-      const facturasHTML = invoiceDetails.invoices
-        .map((inv) => {
-          const total = formatMoney(inv.docTotal);
-          const abono = formatMoney(inv.appliedAmount);
-          const saldoAnt = formatMoney(inv.saldoAnterior);
-          const saldoPend = formatMoney(inv.pendiente);
+      // Función para formatear fechas en formato YYYY-MM-DD
+      const formatDate = (date: any) => {
+        if (!date) return 'N/D';
+        const d = new Date(date);
+        return isNaN(d.getTime()) ? 'N/D' : d.toISOString().split('T')[0];
+      };
 
-          const fecha = inv.invoiceDate
-            ? (() => {
-              const d = new Date(inv.invoiceDate);
-              return isNaN(d.getTime()) ? 'N/D' : d.toLocaleDateString();
-            })()
-            : 'N/D';
-          return `
-            <div class="row"><span>Factura</span><span>${inv.numAtCard ?? 'N/D'}</span></div>
-            <div class="row"><span>Fecha</span><span>${fecha}</span></div>
-            <div class="row"><span>Total</span><span>L. ${total}</span></div>
-            <div class="row"><span>Saldo Ant.</span><span>L. ${saldoAnt}</span></div>
-            <div class="row"><span>Abono</span><span>L. ${abono}</span></div>
-            <div class="row"><span>Saldo Pend.</span><span>L. ${saldoPend}</span></div>
-            <hr/>
+      // Modificación de la tabla de facturas
+      const facturasHTML = `
+        <div class="table-header">
+          <span class="col-date">FECHA</span>
+          <span class="col-invoice">FACTURA</span>
+          <span class="col-balance">SALDO ANT.</span>
+          <span class="col-payment">ABONO</span>
+        </div>
+        ${invoiceDetails.invoices.map((inv) => {
+        const abono = formatMoney(inv.appliedAmount);
+        const saldoAnt = formatMoney(inv.saldoAnterior);
+
+        const fecha = inv.invoiceDate ? formatDate(inv.invoiceDate) : 'N/D';
+
+        return `
+            <div class="table-row">
+              <span class="col-date">${fecha}</span>
+              <span class="col-invoice">${inv.numAtCard ?? 'N/D'}</span>
+              <span class="col-balance">L. ${saldoAnt}</span>
+              <span class="col-payment">L. ${abono}</span>
+            </div>
           `;
-        })
-        .join('');
+      }).join('')}
+      `;
 
       const html = `
         <html>
@@ -131,20 +115,20 @@ const InvoicesDetails = () => {
             <meta charset="utf-8" />
             <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Montserrat:wght@600&display=swap" rel="stylesheet">
             <style>
-              @page { size: 80mm auto; margin: 0; }
+              @page { size: 80mm auto; margin: 4px 4px 8px; }
               * { box-sizing: border-box; }
               body {
                 font-family: 'Inter', sans-serif;
                 background: #fff;
                 margin: 0;
                 padding: 0;
-                font-size: 12px;
+                font-size: 10px;
                 color: #000;
               }
               .ticket {
                 width: 80mm;
                 height: auto;
-                padding: 8px 8px 12px;
+                // padding: 8px 8px 12px;
                 margin: 0 auto;
               }
               img {
@@ -181,6 +165,24 @@ const InvoicesDetails = () => {
                 font-size: 11px;
                 color: #444;
               }
+              /* Estilos para la tabla */
+              .table-header {
+                display: flex;
+                justify-content: space-between;
+                font-weight: bold;
+                margin-bottom: 5px;
+                border-bottom: 1px dashed #000;
+                padding-bottom: 3px;
+              }
+              .table-row {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 5px;
+              }
+              .col-date { width: 25%; }
+              .col-invoice { width: 25%; }
+              .col-balance { width: 25%; text-align: right; }
+              .col-payment { width: 25%; text-align: right; }
             </style>
           </head>
           <body>
@@ -200,10 +202,13 @@ const InvoicesDetails = () => {
               <div class="divider"></div>
               <div class="section-title">Facturas</div>
               ${facturasHTML}
+              <div class="divider"></div>
               <div class="section-title">Pago</div>
               <div class="row"><span>Método</span><span>${invoiceDetails.paymentMeans}</span></div>
               ${paymentExtra}
               <div class="row bold"><span>Total pagado</span><span>L. ${formatMoney(invoiceDetails.total)}</span></div>
+              <div class="divider"></div>
+              <div class="row bold"><span>Saldo pendiente</span><span>L. ${formatMoney(invoiceDetails.invoices[0].pendiente)}</span></div>
               <div class="divider"></div>
               <div class="foot">
                 ¡Gracias por su pago!<br/>

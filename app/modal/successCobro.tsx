@@ -13,7 +13,7 @@ const successCobro = () => {
   const router = useRouter();
 
   const player = useAudioPlayer(audioSource);
-  const { docEntry } = useLocalSearchParams();
+  const { item } = useLocalSearchParams();
 
   useEffect(() => {
     animation.current?.play();
@@ -49,7 +49,7 @@ const successCobro = () => {
         onPress={() => router.push({
           pathname: '/invoicesDetails',
           params: {
-            docEntry: docEntry
+            item: item
           }
         })}
         style={{ backgroundColor: '#28a745', width: '100%', height: 50, alignItems: 'center', justifyContent: 'center', borderRadius: 12, marginBottom: 15 }}

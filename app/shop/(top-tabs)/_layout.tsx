@@ -73,6 +73,7 @@ export default function TopTabNavigatorLayout() {
   const headers = useMemo(() => ({
     Authorization: `Bearer ${user?.token}`,
     'Content-Type': 'application/json',
+    'Accept-Encoding': 'gzip',
   }), [user?.token]);
 
   const fetchCategories = useCallback(async () => {
@@ -104,6 +105,7 @@ export default function TopTabNavigatorLayout() {
         }
       );
 
+      console.log(response.headers['content-encoding']);
       console.log(response.cached ? 'Categorias cargadas desde CACHE' : 'Categorias cargadas desde RED');
 
       const formattedCategories: ProductCategory[] = response.data.map(category => ({
