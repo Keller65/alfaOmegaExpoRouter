@@ -2,14 +2,15 @@ import CartIcon from '@/assets/icons/CartIcon';
 import TrashIcon from '@/assets/icons/TrashIcon';
 import { useAuth } from '@/context/auth';
 import { useAppStore } from '@/state/index';
+import Feather from '@expo/vector-icons/Feather';
 import { BottomSheetBackdrop, BottomSheetBackdropProps, BottomSheetFlatList, BottomSheetFooter, BottomSheetFooterProps, BottomSheetModal, } from '@gorhom/bottom-sheet';
 import axios from 'axios';
 import * as Haptics from 'expo-haptics';
-import { useRouter } from 'expo-router';
-import { memo, useCallback, useMemo, useRef, useState, useEffect } from 'react';
-import { ActivityIndicator, Alert, Text, TouchableOpacity, View, TextInput, Keyboard } from 'react-native';
 import { Image } from 'expo-image';
-import Feather from '@expo/vector-icons/Feather';
+import { useRouter } from 'expo-router';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Keyboard, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import Animated, { Easing, interpolate, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import '../../global.css';
 
 interface CartItemType {
@@ -160,6 +161,47 @@ export default function BottomSheetCart() {
   const { fetchUrl } = useAppStore();
   const FETCH_URL_CREATE_ORDER = fetchUrl + "/sap/orders";
 
+  // Pulse trail animation for the floating cart button
+  const pulse = useSharedValue(0);
+  useEffect(() => {
+    pulse.value = withRepeat(
+      withTiming(1, { duration: 1600, easing: Easing.linear }),
+      -1,
+      false
+    );
+  }, [pulse]);
+
+  const PulsingCircle = ({ index }: { index: number }) => {
+    const style = useAnimatedStyle(() => {
+      const progress = (pulse.value + index * 0.25) % 1;
+      const scale = interpolate(progress, [0, 1], [1, 1.8]);
+      const opacity = interpolate(progress, [0, 1], [0.5, 0]);
+      return {
+        transform: [{ scale }],
+        opacity,
+      };
+    });
+
+    return (
+      <Animated.View
+        // Positioned behind the button, matching its size
+        pointerEvents="none"
+        style={[
+          {
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            height: 50,
+            width: 50,
+            borderRadius: 9999,
+            backgroundColor: '#FDE047', // tailwind yellow-300
+          },
+          style,
+        ]}
+      />
+    );
+  };
+
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener(
       'keyboardDidShow',
@@ -227,7 +269,7 @@ export default function BottomSheetCart() {
           'Content-Type': 'application/json',
         },
       });
-      
+
       closeCart();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       console.log("Pedido enviado", payload);
@@ -366,15 +408,21 @@ export default function BottomSheetCart() {
   return (
     <View style={{ flex: 1 }}>
       {products.length !== 0 && (
-        <TouchableOpacity
-          className="rounded-full flex items-center justify-center h-[50px] w-[50px] bg-yellow-300 shadow-lg shadow-[#09f]/30"
-          onPress={openCart}
-        >
-          <CartIcon color="black" />
-          <View className="absolute -top-2 -right-2 bg-red-500 rounded-full w-6 h-6 items-center justify-center">
-            <Text className="text-white text-xs font-bold">{products.length}</Text>
-          </View>
-        </TouchableOpacity>
+        <View style={{ position: 'relative', height: 50, width: 50, alignItems: 'center', justifyContent: 'center' }}>
+          {/* Pulsing trail behind the button */}
+          <PulsingCircle index={0} />
+          <PulsingCircle index={1} />
+
+          <TouchableOpacity
+            className="rounded-full flex items-center justify-center h-[50px] w-[50px] bg-yellow-300 shadow-lg shadow-[#09f]/30"
+            onPress={openCart}
+          >
+            <CartIcon color="black" />
+            <View className="absolute -top-2 -right-2 bg-red-500 rounded-full w-6 h-6 items-center justify-center">
+              <Text className="text-white text-xs font-bold">{products.length}</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
       )}
 
       <BottomSheetModal
