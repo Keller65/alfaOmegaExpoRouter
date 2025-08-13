@@ -1,3 +1,5 @@
+import 'react-native-gesture-handler';
+import 'react-native-reanimated';
 import { useAppStore } from '@/state';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
@@ -6,6 +8,7 @@ import * as Location from 'expo-location';
 import { Redirect, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import Animated, { useAnimatedKeyboard, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { useAuth } from "../context/auth";
 import "../global.css";
 
@@ -17,6 +20,7 @@ export default function Login() {
   const router = useRouter();
   const { fetchUrl } = useAppStore()
   const FETCH_URL = fetchUrl + "/auth/employee";
+  const keyboard = useAnimatedKeyboard();
 
   const isFormValid = salesPersonCode !== "" && password !== "";
 
@@ -118,68 +122,80 @@ export default function Login() {
     }
   };
 
+  const animatedBlockStyles = useAnimatedStyle(() => {
+    // Desplaza ligeramente el bloque hacia arriba cuando el teclado está abierto.
+    const isOpen = keyboard.height.value > 0;
+    return {
+      transform: [{ translateY: withTiming(isOpen ? -100 : 0, { duration: 120 }) }]
+    };
+  });
+
   if (user) return <Redirect href="/(tabs)" />;
 
   return (
     <View style={styles.container}>
-      <Image
-        source={require('../assets/images/LogoAlfayOmega.png')}
-        style={{ height: 120, width: 260, resizeMode: 'contain', alignSelf: 'center', marginBottom: 60 }}
-      />
-
-      <View style={{ gap: 24 }}>
-        <View>
-          <Text style={{ fontFamily: 'Poppins-Medium', letterSpacing: -0.8, fontSize: 15 }}>Código de Vendedor</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Ingrese su Código de Vendedor"
-            value={salesPersonCode}
-            onChangeText={setSalesPersonCode}
-            keyboardType="numeric"
-            editable={!loading}
-          />
-        </View>
-
-        <View>
-          <Text style={{ fontFamily: 'Poppins-Medium', letterSpacing: -0.8, fontSize: 15 }}>Contraseña</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Ingrese su Contraseña"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            keyboardType="numeric"
-            editable={!loading}
-          />
-        </View>
-      </View>
-
-      <TouchableOpacity
-        style={{
-          marginTop: 16,
-          backgroundColor: isFormValid && !loading ? '#3b82f6' : '#d1d5db',
-          padding: 16,
-          height: 56,
-          borderRadius: 99,
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}
-        onPress={handleLogin}
-        disabled={!isFormValid || loading}
+      <Animated.View
+        style={[styles.block, animatedBlockStyles]}
       >
-        {loading ? (
-          <ActivityIndicator color="#000" size="small" />
-        ) : (
-          <Text style={{ color: isFormValid && !loading ? '#fff' : '#6b7280', textAlign: 'center', fontFamily: 'Poppins-SemiBold', lineHeight: 12 }}>Iniciar Sesión</Text>
-        )}
-      </TouchableOpacity>
-      <View className='w-full items-center justify-center mt-16'>
+        <Image
+          source={require('../assets/images/LogoAlfayOmega.png')}
+          style={{ height: 120, width: 260, resizeMode: 'contain', alignSelf: 'center', marginBottom: 60 }}
+        />
+
+        <View style={{ gap: 24 }}>
+          <View>
+            <Text style={{ fontFamily: 'Poppins-Medium', letterSpacing: -0.8, fontSize: 15 }}>Código de Vendedor</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Ingrese su Código de Vendedor"
+              value={salesPersonCode}
+              onChangeText={setSalesPersonCode}
+              keyboardType="numeric"
+              editable={!loading}
+            />
+          </View>
+
+          <View>
+            <Text style={{ fontFamily: 'Poppins-Medium', letterSpacing: -0.8, fontSize: 15 }}>Contraseña</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Ingrese su Contraseña"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              keyboardType="numeric"
+              editable={!loading}
+            />
+          </View>
+        </View>
+
         <TouchableOpacity
-          onPress={() => router.push('/settings')}
+          style={{
+            marginTop: 16,
+            backgroundColor: isFormValid && !loading ? '#3b82f6' : '#d1d5db',
+            padding: 16,
+            height: 56,
+            borderRadius: 99,
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+          onPress={handleLogin}
+          disabled={!isFormValid || loading}
         >
-          <Text className='font-[Poppins-Medium] tracking-[-0.3px] text-[#3b82f6]'>Configuraciones</Text>
+          {loading ? (
+            <ActivityIndicator color="#000" size="small" />
+          ) : (
+            <Text style={{ color: isFormValid && !loading ? '#fff' : '#6b7280', textAlign: 'center', fontFamily: 'Poppins-SemiBold', lineHeight: 12 }}>Iniciar Sesión</Text>
+          )}
         </TouchableOpacity>
-      </View>
+        <View className='w-full items-center justify-center mt-16'>
+          <TouchableOpacity
+            onPress={() => router.push('/settings')}
+          >
+            <Text className='font-[Poppins-Medium] tracking-[-0.3px] text-[#3b82f6]'>Configuraciones</Text>
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
     </View>
   );
 }
