@@ -172,7 +172,7 @@ export default function TopTabNavigatorLayout() {
   if (loading || clientPriceList === undefined) {
     return (
       <View style={styles.fullScreenCenter}>
-        <ActivityIndicator size="large" color="#007bff" />
+        <ActivityIndicator size="large" color="#000" />
         <Text style={styles.loadingText}>Cargando datos del cliente y categorías...</Text>
       </View>
     );

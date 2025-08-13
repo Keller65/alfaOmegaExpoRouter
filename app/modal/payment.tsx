@@ -84,7 +84,7 @@ const PaymentScreen = () => {
           Authorization: `Bearer ${user?.token}`
         },
         cache: {
-          ttl: 1000 * 60 * 60 * 24,
+          ttl: Infinity,
         },
       })));
 

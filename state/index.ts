@@ -22,6 +22,9 @@ export interface SelectedInvoice extends Invoice {
 }
 
 interface AppStoreState {
+  // Flag bienvenida aceptada
+  userClickAcceptWelcome: boolean;
+  setUserClickAcceptWelcome: (value: boolean) => void;
   // Estado NO persistente para datos del formulario de pago
   paymentForm: {
     method: string | null;
@@ -96,6 +99,8 @@ export const useAppStore = create<AppStoreState>()(
       fetchUrl: '',
       selectedInvoices: [],
       selectedCustomerInvoices: null,
+  userClickAcceptWelcome: false,
+  setUserClickAcceptWelcome: (value: boolean) => set({ userClickAcceptWelcome: value }),
       // Estado NO persistente para datos del formulario de pago
       paymentForm: {
         method: null,

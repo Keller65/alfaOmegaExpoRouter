@@ -163,7 +163,10 @@ const Settings = () => {
           }`}
       >
         {isSaving ? (
-          <ActivityIndicator color="#000" />
+          <View className="flex-row items-center gap-2">
+            <ActivityIndicator color="#6b7280" />
+            <Text className='text-gray-500 tracking-[-0.3px] font-[Poppins-SemiBold] text-base'>Guardando configuración...</Text>
+          </View>
         ) : (
           <Text className="text-black tracking-[-0.3px] font-[Poppins-SemiBold] text-base">Guardar configuración</Text>
         )}

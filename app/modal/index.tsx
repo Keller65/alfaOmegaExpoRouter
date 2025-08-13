@@ -307,9 +307,9 @@ const IndexScreen = () => {
               />
               <View className="mt-4">
                 <TouchableOpacity
-                  onPress={() => {
+                  onPress={async () => {
+                    await bottomSheetModalRef.current?.close();
                     proceedingRef.current = true;
-                    bottomSheetModalRef.current?.close();
                     router.push({
                       pathname: '/modal/cobro',
                       params: {

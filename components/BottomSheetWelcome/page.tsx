@@ -1,25 +1,32 @@
-import { useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
-import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
-import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '@/context/auth';
-import "../../global.css"
+import { useAppStore } from '@/state';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
+import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
+import { useEffect, useRef } from 'react';
+import { Text, TouchableOpacity, View } from 'react-native';
+import "../../global.css";
 
 export default function BottomSheetWelcome() {
   const bottomSheetRef = useRef<BottomSheetModal>(null);
   const { user } = useAuth();
+  const { userClickAcceptWelcome, setUserClickAcceptWelcome } = useAppStore();
 
   useEffect(() => {
-    bottomSheetRef.current?.present();
-  }, []);
+    if (!userClickAcceptWelcome) {
+      bottomSheetRef.current?.present();
+    }
+  }, [userClickAcceptWelcome]);
 
   const handleStart = () => {
+    setUserClickAcceptWelcome(true);
     bottomSheetRef.current?.dismiss();
   };
 
+  if (userClickAcceptWelcome) return null;
+
   return (
-    <View className="flex-1 justify-center items-center bg-white p-6">
+    <View className="flex-1 justify-center items-center bg-white p-6" pointerEvents="box-none">
       <BottomSheetModal
         ref={bottomSheetRef}
         snapPoints={['60%']}

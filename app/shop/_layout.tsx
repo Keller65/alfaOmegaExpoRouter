@@ -118,7 +118,7 @@ export default function TopTabNavigatorLayout() {
   if (loading) {
     return (
       <View style={styles.fullScreenCenter}>
-        <ActivityIndicator size="large" color="#007bff" />
+        <ActivityIndicator size="large" color="#000" />
         <Text style={styles.loadingText}>Cargando categorías...</Text>
       </View>
     );

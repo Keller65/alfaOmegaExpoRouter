@@ -38,7 +38,7 @@ export default function App() {
         {products.length > 0 && (<BottomSheetCart />)}
       </View>
 
-      {/* <BottomSheetWelcome /> */}
+      <BottomSheetWelcome />
     </View>
   );
 }

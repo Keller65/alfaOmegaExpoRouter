@@ -482,23 +482,23 @@ const CategoryProductScreen = memo(() => {
                 )}
 
                 <View className="flex-1 mt-2">
-                  <View className="p-3 rounded-2xl">
-                    <Text className="font-[Poppins-SemiBold] text-base tracking-[-0.3px] text-gray-900 mb-1">Inventario</Text>
+                  <View className="">
+                    <Text className="font-[Poppins-SemiBold] text-base tracking-[-0.3px] text-gray-800 mb-1">Inventario</Text>
 
                     <View className='flex-row gap-2 items-center justify-between'>
-                      <View className='bg-gray-200 px-3 py-1 rounded-lg flex-1'>
-                        <Text className="font-[Poppins-Bold] text-sm text-gray-900 tracking-[-0.3px]">Disponible</Text>
-                        <Text className="font-[Poppins-Regular] text-xl text-gray-600 tracking-[-0.3px]">{selectedItem.inStock.toLocaleString()}</Text>
+                      <View className='bg-gray-100 px-3 py-1 rounded-lg flex-1'>
+                        <Text className="font-[Poppins-Bold] text-sm text-gray-600 tracking-[-0.3px]">Disponible</Text>
+                        <Text className="font-[Poppins-Regular] text-xl text-gray-900 tracking-[-0.3px]">{selectedItem.inStock.toLocaleString()}</Text>
                       </View>
 
-                      <View className='bg-gray-200 px-3 py-1 rounded-lg flex-1'>
-                        <Text className="font-[Poppins-Bold] text-sm text-gray-900 tracking-[-0.3px]">En Pedido</Text>
-                        <Text className="font-[Poppins-Regular] text-xl text-gray-600 tracking-[-0.3px]">{selectedItem.ordered.toLocaleString()}</Text>
+                      <View className='bg-gray-100 px-3 py-1 rounded-lg flex-1'>
+                        <Text className="font-[Poppins-Bold] text-sm text-gray-600 tracking-[-0.3px]">En Pedido</Text>
+                        <Text className="font-[Poppins-Regular] text-xl text-gray-900 tracking-[-0.3px]">{selectedItem.ordered.toLocaleString()}</Text>
                       </View>
 
-                      <View className='bg-gray-200 px-3 py-1 rounded-lg'>
-                        <Text className="font-[Poppins-Bold] text-sm text-gray-900 tracking-[-0.3px]">Comprometido</Text>
-                        <Text className="font-[Poppins-Regular] text-xl text-gray-600 tracking-[-0.3px]">{selectedItem.committed.toLocaleString()}</Text>
+                      <View className='bg-gray-100 px-3 py-1 rounded-lg'>
+                        <Text className="font-[Poppins-Bold] text-sm text-gray-600 tracking-[-0.3px]">Comprometido</Text>
+                        <Text className="font-[Poppins-Regular] text-xl text-gray-900 tracking-[-0.3px]">{selectedItem.committed.toLocaleString()}</Text>
                       </View>
                     </View>
                   </View>

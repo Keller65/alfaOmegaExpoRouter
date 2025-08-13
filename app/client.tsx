@@ -7,7 +7,7 @@ import { Customer } from '@/types/types';
 import { FlashList } from '@shopify/flash-list';
 import ClientIcon from '../assets/icons/ClientIcon';
 import Feather from '@expo/vector-icons/Feather';
-import axios from 'axios';
+import api from '@/lib/api';
 
 const PAGE_SIZE = 1000;
 
@@ -35,15 +35,21 @@ const ClientScreen = memo(() => {
       if (pageNumber === 1 && !refreshing) setLoading(true);
       if (pageNumber > 1) setLoadingMore(true);
 
-      const res = await axios.get(
-        `${FETCH_URL}by-sales-emp?slpCode=${user.salesPersonCode}&page=${pageNumber}&pageSize=${PAGE_SIZE}`,
+      const res = await api.get(
+        `by-sales-emp?slpCode=${user.salesPersonCode}&page=${pageNumber}&pageSize=${PAGE_SIZE}`,
         {
+          baseURL: FETCH_URL,
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${user.token}`,
           },
+          cache: {
+            ttl: Infinity,
+          }
         }
       );
+
+      console.info(res.cached ? 'Clientes cargados desde cache' : 'Clientes cargados desde red');
 
       const newCustomers = res.data.items || [];
 
@@ -150,7 +156,40 @@ const ClientScreen = memo(() => {
   const onRefresh = async () => {
     setRefreshing(true);
     setPage(1);
-    await fetchCustomers(1);
+
+    if (!user?.salesPersonCode || !user?.token) return;
+
+    try {
+      setLoading(true);
+
+      const res = await api.get(
+        `by-sales-emp?slpCode=${user.salesPersonCode}&page=1&pageSize=${PAGE_SIZE}`,
+        {
+          baseURL: FETCH_URL,
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${user.token}`,
+          },
+          cache: {
+            ttl: 1000 * 60 * 60 * 24,
+            override: true,
+          }
+        }
+      );
+
+      console.info(res.cached ? 'Clientes cargados desde cache (refresh)' : 'Clientes cargados desde red (refresh)');
+
+      const newCustomers = res.data.items || [];
+
+      setCustomers(newCustomers);
+      setHasMore(newCustomers.length === PAGE_SIZE);
+    } catch (err: any) {
+      console.error('Error al refrescar clientes:', err);
+      setError(err.response?.data?.message || err.message || 'Error desconocido.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   };
 
   if (!user?.token) {
