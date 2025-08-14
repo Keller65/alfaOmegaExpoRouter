@@ -23,7 +23,7 @@ const formatDelta = (delta?: number) => {
 
 export default function KPICard({ title, value, delta, subtitle }: KPICardProps) {
   return (
-    <View className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 w-[48%]">
+    <View className="bg-white rounded-2xl p-4 border border-gray-100 w-[48%]">
       <Text
         className="text-gray-500 text-xs mb-1"
         style={{ fontFamily: 'Poppins-SemiBold', letterSpacing: -0.3 }}

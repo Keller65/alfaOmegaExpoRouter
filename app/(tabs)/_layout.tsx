@@ -1,6 +1,7 @@
 import { createDrawerNavigator, DrawerContentScrollView, DrawerItemList } from '@react-navigation/drawer';
 import { useAuth } from '@/context/auth';
 import { View, Text, Platform } from 'react-native';
+import ConnectivityBanner from '@/components/ConnectivityBanner';
 
 import ProtectedLayout from '../ProtectedLayout';
 
@@ -25,6 +26,8 @@ export default function Layout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <BottomSheetModalProvider>
         <ProtectedLayout>
+          <ConnectivityBanner />
+          
           <Drawer.Navigator
             screenOptions={{
               headerShown: true,

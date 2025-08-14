@@ -283,7 +283,7 @@ const Cobro = () => {
               <ActivityIndicator color={disableCobroBtn ? '#6B7280' : '#000'} />
             </View>
           ) : (
-            <Text className={`font-[Poppins-Bold] text-lg tracking-[-0.3px] ${disableCobroBtn ? 'text-gray-500' : 'text-black'}`}>
+            <Text className={`font-[Poppins-SemiBold] text-lg tracking-[-0.3px] ${disableCobroBtn ? 'text-gray-500' : 'text-black'}`}>
               Realizar cobro
             </Text>
           )}

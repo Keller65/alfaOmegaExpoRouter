@@ -406,7 +406,7 @@ export default function BottomSheetCart() {
   ), [total, customerSelected?.cardName, handleSubmitOrder, isLoading, router]);
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, zIndex: 100 }}>
       {products.length !== 0 && (
         <View style={{ position: 'relative', height: 50, width: 50, alignItems: 'center', justifyContent: 'center' }}>
           {/* Pulsing trail behind the button */}

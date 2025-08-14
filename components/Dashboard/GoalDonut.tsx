@@ -1,74 +1,109 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Animated, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
 export type GoalDonutProps = {
   title?: string;
-  current: number; // ventas actuales
-  target: number;  // meta
+  current: number;
+  target: number;
+  progressPct?: number;
+  currency?: string;
+  centerLabelPrimary?: string;
+  centerLabelSecondary?: string;
+  lastUpdated?: string;
 };
 
-export default function GoalDonut({ title = 'Meta mensual', current, target }: GoalDonutProps) {
-  const progress = Math.max(0, Math.min(1, target === 0 ? 0 : current / target));
-  const percent = Math.round(progress * 100);
-
-  // Animaciones de entrada
-  const opacity = useRef(new Animated.Value(0)).current;
+export default function GoalDonut({
+  title = 'Meta mensual',
+  current,
+  target,
+  progressPct,
+  currency,
+  centerLabelPrimary,
+  centerLabelSecondary,
+  lastUpdated,
+}: GoalDonutProps) {
   const scale = useRef(new Animated.Value(0.94)).current;
+  const [displayPercent, setDisplayPercent] = useState(0);
+
+  const rawProgress = (() => {
+    if (progressPct != null) return progressPct;
+    if (!target) return 0;
+    return (current / target) * 100;
+  })();
+  const boundedProgress = Math.max(0, Math.min(100, rawProgress));
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(opacity, { toValue: 1, duration: 420, useNativeDriver: true }),
-      Animated.spring(scale, { toValue: 1, useNativeDriver: true, friction: 7, tension: 90 }),
-    ]).start();
-  }, [opacity, scale]);
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, friction: 7, tension: 90 }).start();
+  }, [scale]);
 
-  // Conteo progresivo del porcentaje para animar el arco
-  const [displayPercent, setDisplayPercent] = useState(0);
   useEffect(() => {
     const duration = 800;
     const frames = Math.max(1, Math.floor(duration / 16));
-    const inc = percent / frames;
+    const inc = boundedProgress / frames;
     let i = 0;
     let acc = 0;
     const id = setInterval(() => {
       i += 1;
       acc += inc;
       if (i >= frames) {
-        setDisplayPercent(percent);
+        setDisplayPercent(Math.round(boundedProgress));
         clearInterval(id);
       } else {
         setDisplayPercent(Math.round(acc));
       }
     }, 16);
     return () => clearInterval(id);
-  }, [percent]);
+  }, [boundedProgress]);
 
-  // Parámetros del círculo
-  const outerRadius = 70; // coincide con el anterior radius
-  const strokeWidth = 20; // outer (70) - innerRadius (50) => 20
-  const size = outerRadius * 2; // ancho/alto del SVG
-  // Radio real del trazo (centra el stroke)
-  const r = outerRadius - strokeWidth / 2; // 60
+  const outerRadius = 70;
+  const strokeWidth = 20;
+  const size = outerRadius * 2;
+  const r = outerRadius - strokeWidth / 2;
   const circumference = 2 * Math.PI * r;
   const dashOffset = circumference * (1 - displayPercent / 100);
 
   const trackColor = '#f2f2f2';
-  // Selección de color suave según rango de porcentaje final (no animado) para mantener consistencia durante la animación
   const progressColor = (() => {
-    // Definimos rangos: [0,25) rojo, [25,50) amarillo, [50,75) azul (existente), [75,100+] verde
-    // Elegimos tonos suaves con buen contraste sobre fondo blanco y track gris claro
-    if (percent < 25) return '#ff7b72';      // Soft red coral
-    if (percent < 50) return '#ffc94d';      // Warm soft amber
-    if (percent < 75) return '#00a6ff';      // Existing pleasant blue
-    return '#00e053';                        // Soft fresh green
+    if (displayPercent < 25) return '#ff7b72';
+    if (displayPercent < 50) return '#ffc94d';
+    if (displayPercent < 75) return '#00a6ff';
+    return '#00e053';
+  })();
+
+  function formatCompact(value: number | undefined, currency?: string) {
+    if (value == null || isNaN(value)) return '--';
+    const units = [
+      { v: 1e9, s: 'B' },
+      { v: 1e6, s: 'M' },
+      { v: 1e3, s: 'k' }
+    ];
+    for (const u of units) {
+      if (value >= u.v) return `${currency ? currency + ' ' : ''}${(value / u.v).toFixed(1)}${u.s}`;
+    }
+    return `${currency ? currency + ' ' : ''}${Math.round(value).toLocaleString()}`;
+  }
+
+  const centerPrimary = centerLabelPrimary ?? `${displayPercent}%`;
+  const centerSecondary = centerLabelSecondary ?? `${formatCompact(current, currency)} de ${formatCompact(target, currency)}`;
+
+  const lastUpdatedText = (() => {
+    if (!lastUpdated) return null;
+    try {
+      const d = new Date(lastUpdated);
+      return `Actualizado: ${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
+    } catch {
+      return null;
+    }
   })();
 
   return (
-    <View className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 w-full">
-      <Text className="text-gray-600 text-xs mb-2 font-[Poppins-SemiBold] tracking-[-0.3px]">{title}</Text>
+    <View className="bg-white rounded-2xl px-4 py-3 border border-gray-100 w-full">
+      <Text className="text-gray-500 text-xs font-[Poppins-SemiBold] tracking-[-0.3px]">{title}</Text>
+      <Text className="text-gray-900 text-[14px] mb-2 font-[Poppins-SemiBold] tracking-[-0.3px]">{target.toLocaleString()}</Text>
+
       <View className="items-center">
-        <Animated.View style={{ opacity, transform: [{ scale }] }}>
+        <Animated.View style={{ transform: [{ scale }] }}>
           <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
             <Svg width={size} height={size}>
               {/* Track */}
@@ -80,7 +115,6 @@ export default function GoalDonut({ title = 'Meta mensual', current, target }: G
                 strokeWidth={strokeWidth}
                 fill="none"
               />
-              {/* Progreso con extremos redondeados */}
               <Circle
                 cx={size / 2}
                 cy={size / 2}
@@ -91,17 +125,20 @@ export default function GoalDonut({ title = 'Meta mensual', current, target }: G
                 strokeDasharray={`${circumference} ${circumference}`}
                 strokeDashoffset={dashOffset}
                 strokeLinecap="round"
-                // Rotar -90° para que empiece arriba
                 transform={`rotate(-90 ${size / 2} ${size / 2})`}
               />
             </Svg>
             <View style={{ position: 'absolute', alignItems: 'center' }}>
-              <Text className="text-gray-900 font-[Poppins-SemiBold] tracking-[-0.3px] text-xl">{displayPercent}%</Text>
-              <Text className="text-gray-500 font-[Poppins-Regular] tracking-[-0.3px] text-[10px]">${current.toLocaleString()} / ${target.toLocaleString()}</Text>
+              <Text className="text-gray-900 font-[Poppins-SemiBold] tracking-[-0.3px] text-xl">{centerPrimary}</Text>
+              <Text className="text-gray-500 font-[Poppins-Regular] tracking-[-0.3px] text-[10px]">{centerSecondary}</Text>
             </View>
           </View>
         </Animated.View>
       </View>
+
+      {lastUpdatedText && (
+        <Text className="text-[10px] text-gray-400 mt-4 font-[Poppins-Regular] tracking-[-0.3px]">{lastUpdatedText}</Text>
+      )}
     </View>
   );
 }

@@ -6,10 +6,11 @@ import Feather from '@expo/vector-icons/Feather';
 import { Asset } from 'expo-asset';
 import Constants from 'expo-constants';
 import { SaveFormat, useImageManipulator } from 'expo-image-manipulator';
-import { printAsync } from 'expo-print';
-import { useLocalSearchParams } from 'expo-router';
-import { useMemo } from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { printAsync, printToFileAsync } from 'expo-print';
+import { router, useLocalSearchParams } from 'expo-router';
+import * as Sharing from 'expo-sharing';
+import { useMemo, useState } from 'react';
+import { Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const IMAGE = Asset.fromModule(require('@/assets/images/LogoAlfayOmega.png'))
@@ -17,6 +18,7 @@ const IMAGE = Asset.fromModule(require('@/assets/images/LogoAlfayOmega.png'))
 const InvoicesDetails = () => {
   const { item } = useLocalSearchParams<{ item?: string | string[] }>();
   const { user } = useAuth();
+  const [printing, setPrinting] = useState(false);
 
   const invoiceDetails = useMemo<PaymentData | null>(() => {
     const raw = Array.isArray(item) ? item[0] : item;
@@ -48,6 +50,8 @@ const InvoicesDetails = () => {
   async function generateAndPrint() {
     try {
       if (!invoiceDetails) return;
+      if (printing) return;
+      setPrinting(true);
 
       await IMAGE.downloadAsync();
       const manipulatedImage = await context.renderAsync();
@@ -109,119 +113,152 @@ const InvoicesDetails = () => {
       }).join('')}
       `;
 
+      // Calcular el saldo pendiente sumando todos los pendientes de las facturas
+      const totalPendiente = invoiceDetails.invoices.reduce(
+        (acc, inv) => acc + (Number(inv.pendiente) || 0),
+        0
+      );
+
       const html = `
         <html>
           <head>
-            <meta charset="utf-8" />
-            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Montserrat:wght@600&display=swap" rel="stylesheet">
-            <style>
-              @page { size: 80mm auto; margin: 4px 4px 8px; }
-              * { box-sizing: border-box; }
-              body {
-                font-family: 'Inter', sans-serif;
-                background: #fff;
-                margin: 0;
-                padding: 0;
-                font-size: 10px;
-                color: #000;
-              }
-              .ticket {
-                width: 80mm;
-                height: auto;
-                // padding: 8px 8px 12px;
-                margin: 0 auto;
-              }
-              img {
-                max-width: 80%;
-                margin: 12px auto 12px;
-                display: block;
-                background: white;
-              }
-              .center { text-align: center; }
-              .start { text-align: left; width: 100%; margin-top: 8px; }
-              .bold { font-weight: 600; }
-              .muted { color: #555; }
-              .row { display: flex; justify-content: space-between; gap: 8px; }
-              .section-title {
-                font-family: 'Montserrat', sans-serif;
-                font-weight: 600;
-                margin: 8px 0 4px;
-                text-transform: uppercase;
-              }
-              .divider {
-                height: 1px;
-                background: #000;
-                opacity: 0.2;
-                margin: 8px 0;
-              }
-              hr {
-                border: none;
-                border-top: 1px dashed #000;
-                margin: 6px 0;
-              }
-              .foot {
-                margin-top: 30px;
-                text-align: center;
-                font-size: 11px;
-                color: #444;
-              }
-              /* Estilos para la tabla */
-              .table-header {
-                display: flex;
-                justify-content: space-between;
-                font-weight: bold;
-                margin-bottom: 5px;
-                border-bottom: 1px dashed #000;
-                padding-bottom: 3px;
-              }
-              .table-row {
-                display: flex;
-                justify-content: space-between;
-                margin-bottom: 5px;
-              }
-              .col-date { width: 25%; }
-              .col-invoice { width: 25%; }
-              .col-balance { width: 25%; text-align: right; }
-              .col-payment { width: 25%; text-align: right; }
-            </style>
+        <meta charset="utf-8" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Montserrat:wght@600&display=swap" rel="stylesheet">
+        <style>
+          @page { size: 80mm auto; margin: 4px 4px 8px; }
+          * { box-sizing: border-box; }
+          body {
+            font-family: 'Inter', sans-serif;
+            background: #fff;
+            margin: 0;
+            padding: 0;
+            font-size: 10px;
+            color: #000;
+          }
+          .ticket {
+            width: 80mm;
+            height: auto;
+            // padding: 8px 8px 12px;
+            margin: 0 auto;
+          }
+          img {
+            max-width: 80%;
+            margin: 12px auto 12px;
+            display: block;
+            background: white;
+          }
+          .center { text-align: center; }
+          .start { text-align: left; width: 100%; margin-top: 8px; }
+          .bold { font-weight: 600; }
+          .muted { color: #555; }
+          .row { display: flex; justify-content: space-between; gap: 8px; }
+          .section-title {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 600;
+            margin: 8px 0 4px;
+            text-transform: uppercase;
+          }
+          .divider {
+            height: 1px;
+            background: #000;
+            opacity: 0.2;
+            margin: 8px 0;
+          }
+          hr {
+            border: none;
+            border-top: 1px dashed #000;
+            margin: 6px 0;
+          }
+          .foot {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 11px;
+            color: #444;
+          }
+          /* Estilos para la tabla */
+          .table-header {
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            margin-bottom: 5px;
+            border-bottom: 1px dashed #000;
+            padding-bottom: 3px;
+          }
+          .table-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+          }
+          .col-date { width: 25%; }
+          .col-invoice { width: 25%; }
+          .col-balance { width: 25%; text-align: right; }
+          .col-payment { width: 25%; text-align: right; }
+        </style>
           </head>
           <body>
-            <div class="ticket">
-              <div class="center">
-                <img src="${logo}" />
-                <div class="bold" style="font-family:'Montserrat', sans-serif; font-size:18px; margin-bottom: 34px;">Grupo Alfa & Omega</div>
-              </div>
-              <div class="start">
-                <div class="row"><span class="bold">Folio</span><span>${folio || 'N/D'}</span></div>
-                <div class="row"><span class="bold">Cliente</span><span>${invoiceDetails.cardCode} - ${invoiceDetails.cardName}</span></div>
-                <div class="row"><span class="bold">Vendedor</span><span>${user?.fullName ?? ''}</span></div>
-                <div class="row"><span class="bold">Fecha</span><span>${dateStr}</span></div>
-              </div>
-              <div class="divider"></div>
-              <div class="center section-title">Recibo de Cobros</div>
-              <div class="divider"></div>
-              <div class="section-title">Facturas</div>
-              ${facturasHTML}
-              <div class="divider"></div>
-              <div class="section-title">Pago</div>
-              <div class="row"><span>Método</span><span>${invoiceDetails.paymentMeans}</span></div>
-              ${paymentExtra}
-              <div class="row bold"><span>Total pagado</span><span>L. ${formatMoney(invoiceDetails.total)}</span></div>
-              <div class="divider"></div>
-              <div class="row bold"><span>Saldo pendiente</span><span>L. ${formatMoney(invoiceDetails.invoices[0].pendiente)}</span></div>
-              <div class="divider"></div>
-              <div class="foot">
-                ¡Gracias por su pago!<br/>
-                Dudas o reclamos por inconsistencias con su saldo,<br/> llamar al 9458-7168
-              </div>
-            </div>
+        <div class="ticket">
+          <div class="center">
+            <img src="${logo}" />
+            <div class="bold" style="font-family:'Montserrat', sans-serif; font-size:18px; margin-bottom: 34px;">Grupo Alfa & Omega</div>
+          </div>
+          <div class="start">
+            <div class="row"><span class="bold">Folio</span><span>${folio || 'N/D'}</span></div>
+            <div class="row"><span class="bold">Cliente</span><span>${invoiceDetails.cardCode} - ${invoiceDetails.cardName}</span></div>
+            <div class="row"><span class="bold">Vendedor</span><span>${user?.fullName ?? ''}</span></div>
+            <div class="row"><span class="bold">Fecha</span><span>${dateStr}</span></div>
+          </div>
+          <div class="divider"></div>
+          <div class="center section-title">Recibo de Cobros</div>
+          <div class="divider"></div>
+          <div class="section-title">Facturas</div>
+          ${facturasHTML}
+          <div class="divider"></div>
+          <div class="section-title">Pago</div>
+          <div class="row"><span>Método</span><span>${invoiceDetails.paymentMeans}</span></div>
+          ${paymentExtra}
+          <div class="row bold"><span>Total pagado</span><span>L. ${formatMoney(invoiceDetails.total)}</span></div>
+          <div class="divider"></div>
+          <div class="row bold"><span>Saldo pendiente</span><span>L. ${formatMoney(totalPendiente)}</span></div>
+          <div class="divider"></div>
+          <div class="foot">
+            ¡Gracias por su pago!<br/>
+            Dudas o reclamos por inconsistencias con su saldo,<br/> llamar al 9458-7168
+          </div>
+        </div>
           </body>
         </html>
       `;
+      // Primero generamos el PDF localmente (más confiable en producción / standalone)
+      const pdf = await printToFileAsync({ html, base64: false });
 
-      await printAsync({ html });
+      // Intentamos abrir el diálogo de impresión (iOS admite uri directa; en Android usamos nuevamente html si uri falla)
+      try {
+        if (Platform.OS === 'ios') {
+          await printAsync({ uri: pdf.uri });
+        } else {
+          // Algunos servicios de impresión en Android no aceptan uri, reutilizamos html
+          await printAsync({ html });
+        }
+      } catch (printErr) {
+        console.warn('Fallo al abrir diálogo de impresión, se intentará compartir el PDF:', printErr);
+      }
+
+      // Ofrecemos compartir/guardar el PDF si es posible
+      try {
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(pdf.uri, {
+            UTI: 'com.adobe.pdf',
+            mimeType: 'application/pdf',
+            dialogTitle: 'Compartir recibo'
+          });
+        }
+      } catch (shareErr) {
+        console.warn('No se pudo compartir el PDF:', shareErr);
+      }
     } catch (error) {
       console.error('Error:', error);
+    } finally {
+      setPrinting(false);
     }
   }
 
@@ -231,7 +268,12 @@ const InvoicesDetails = () => {
         <View className='flex-row justify-between items-center w-full'>
           <Text className="text-xl font-[Poppins-SemiBold] mt-4 mb-2">Cliente</Text>
 
-          <TouchableOpacity onPress={generateAndPrint} className="z-50">
+          <TouchableOpacity
+            onPress={() => {
+              router.push({ pathname: '/previewInvoice', params: { item: Array.isArray(item) ? item[0] : item } });
+            }}
+            className="z-50"
+          >
             <Feather name="printer" size={28} color="black" />
           </TouchableOpacity>
         </View>
@@ -293,51 +335,51 @@ const InvoicesDetails = () => {
               <Text className="text-base font-[Poppins-SemiBold] text-gray-800">{invoiceDetails.paymentMeans}</Text>
             </View>
 
-            {invoiceDetails.paymentMeans === "Tarjeta" && (
+            {invoiceDetails.paymentMeans === "Tarjeta" && invoiceDetails.payment?.[0] && (
               <View className="flex-row justify-between items-center mb-2 p-3 bg-gray-100 rounded-lg">
                 <View className="flex-row items-center gap-2">
                   <Text className="text-base font-[Poppins-Regular] text-gray-700">Referencia</Text>
                 </View>
-                <Text className="text-base font-[Poppins-SemiBold] text-gray-800">{invoiceDetails.payment[0].cardVoucherNum}</Text>
+                <Text className="text-base font-[Poppins-SemiBold] text-gray-800">{invoiceDetails.payment?.[0]?.cardVoucherNum || 'N/D'}</Text>
               </View>
             )}
 
-            {invoiceDetails.paymentMeans === "Cheque" && (
+            {invoiceDetails.paymentMeans === "Cheque" && invoiceDetails.payment?.[0] && (
               <View className="items-center gap-2 mb-2">
                 <View className='w-full gap-2 h-fit flex-row'>
                   <View className="flex-1 items-start gap-2 p-3 rounded-lg bg-gray-100">
                     <Text className="text-sm font-[Poppins-Regular] leading-3 text-gray-700">Banco</Text>
-                    <Text className="text-base font-[Poppins-SemiBold] leading-3 text-gray-800">{invoiceDetails.payment[0].bankCode}</Text>
+                    <Text className="text-base font-[Poppins-SemiBold] leading-3 text-gray-800">{invoiceDetails.payment?.[0]?.bankCode || 'N/D'}</Text>
                   </View>
 
                   <View className="flex-1 items-start gap-2 p-3 rounded-lg bg-gray-100">
                     <Text className="text-sm font-[Poppins-Regular] leading-3 text-gray-700">Numero de Cheque</Text>
-                    <Text className="text-base font-[Poppins-SemiBold] leading-3 text-gray-800">{invoiceDetails.payment[0].checkNumber}</Text>
+                    <Text className="text-base font-[Poppins-SemiBold] leading-3 text-gray-800">{invoiceDetails.payment?.[0]?.checkNumber || 'N/D'}</Text>
                   </View>
                 </View>
 
                 <View className="flex-1 w-full items-start gap-2 p-3 rounded-lg bg-gray-100">
                   <Text className="text-sm font-[Poppins-Regular] leading-3 text-gray-700">Fecha del Cheque</Text>
-                  <Text className="text-base font-[Poppins-SemiBold] leading-3 text-gray-800">{invoiceDetails.payment[0].dueDate}</Text>
+                  <Text className="text-base font-[Poppins-SemiBold] leading-3 text-gray-800">{invoiceDetails.payment?.[0]?.dueDate || 'N/D'}</Text>
                 </View>
               </View>
             )}
 
-            {invoiceDetails.paymentMeans === "Transferencia" && (
+            {invoiceDetails.paymentMeans === "Transferencia" && invoiceDetails.payment?.[0] && (
               <View className="items-center gap-2 mb-2">
                 <View className="flex-1 w-full items-start justify-center gap-2 p-3 rounded-lg bg-gray-100">
                   <Text className="text-sm font-[Poppins-Regular] leading-3 text-gray-700">Fecha de la Transferencia</Text>
-                  <Text className="text-base font-[Poppins-SemiBold] leading-3 text-gray-800">{invoiceDetails.payment[0].transferDate}</Text>
+                  <Text className="text-base font-[Poppins-SemiBold] leading-3 text-gray-800">{invoiceDetails.payment?.[0]?.transferDate || 'N/D'}</Text>
                 </View>
 
                 <View className="flex-1 w-full items-start justify-center gap-2 p-3 rounded-lg bg-gray-100">
                   <Text className="text-sm font-[Poppins-Regular] leading-3 text-gray-700">Referencia</Text>
-                  <Text className="text-base font-[Poppins-SemiBold] leading-3 text-gray-800">{invoiceDetails.payment[0].transferReference}</Text>
+                  <Text className="text-base font-[Poppins-SemiBold] leading-3 text-gray-800">{invoiceDetails.payment?.[0]?.transferReference || 'N/D'}</Text>
                 </View>
 
                 <View className="flex-1 w-full items-start justify-center p-3 rounded-lg bg-gray-100">
                   <Text className="text-sm font-[Poppins-Regular] text-gray-700">Cuenta</Text>
-                  <Text className="text-base font-[Poppins-SemiBold] text-gray-800">{invoiceDetails.payment[0].transferAccountName || "No disponible"}</Text>
+                  <Text className="text-base font-[Poppins-SemiBold] text-gray-800">{invoiceDetails.payment?.[0]?.transferAccountName || "No disponible"}</Text>
                 </View>
               </View>
             )}
