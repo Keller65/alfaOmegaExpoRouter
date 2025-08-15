@@ -51,19 +51,11 @@ const Success = () => {
             OrderDetails: OrderDetails
           }
         })}
-        style={{ backgroundColor: '#28a745', width: '100%', height: 50, alignItems: 'center', justifyContent: 'center', borderRadius: 12, marginBottom: 15 }}
+        className='rounded-full'
+        style={{ backgroundColor: '#28a745', width: '100%', height: 50, alignItems: 'center', justifyContent: 'center', marginBottom: 15 }}
       >
         <Text style={{ fontFamily: 'Poppins-Medium', color: '#fff', fontSize: 18 }}>
           Ver Pedido
-        </Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        onPress={() => router.push('/explore')}
-        style={{ borderWidth: 2, borderColor: '#28a745', width: '100%', height: 50, alignItems: 'center', justifyContent: 'center', borderRadius: 12 }}
-      >
-        <Text style={{ fontFamily: 'Poppins-Medium', color: '#28a745', fontSize: 18 }}>
-          ver pedidos
         </Text>
       </TouchableOpacity>
     </SafeAreaView>
