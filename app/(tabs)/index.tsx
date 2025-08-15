@@ -5,9 +5,26 @@ import KPICard from '@/components/Dashboard/KPICard';
 import { useAuth } from '@/context/auth';
 import { useAppStore } from '@/state';
 import { useCallback, useEffect, useState } from 'react';
-import { RefreshControl, ScrollView, Text, View } from 'react-native';
+import { RefreshControl, ScrollView, Text, View, Button, Platform } from 'react-native';
+import * as Print from 'expo-print';
 import axios from 'axios';
 import "../../global.css";
+
+const html = `
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
+  </head>
+  <body style="text-align: center;">
+    <h1 style="font-size: 50px; font-family: Helvetica Neue; font-weight: normal;">
+      Hello Expo!
+    </h1>
+    <img
+      src="https://d30j33t1r58ioz.cloudfront.net/static/guides/sdk.png"
+      style="width: 90vw;" />
+  </body>
+</html>
+`;
 
 export default function App() {
   const kpis = {
@@ -84,6 +101,21 @@ export default function App() {
     });
   }, []);
 
+  const [selectedPrinter, setSelectedPrinter] = useState<Print.Printer | undefined>(undefined);
+
+  const print = async () => {
+    // On iOS/android prints the given html. On web prints the HTML from the current page.
+    await Print.printAsync({
+      html,
+      printerUrl: selectedPrinter?.url, // iOS only
+    });
+  };
+
+  const selectPrinter = async () => {
+    const printer = await Print.selectPrinterAsync(); // iOS only
+    setSelectedPrinter(printer);
+  };
+
   return (
     <View className="flex-1 bg-white relative px-4">
 
@@ -115,6 +147,16 @@ export default function App() {
       <View className="absolute bottom-4 right-8 gap-3 items-end">
         {products.length > 0 && (<BottomSheetCart />)}
       </View>
+
+      <Button title="Print" onPress={print} />
+      {Platform.OS === 'ios' && (
+        <>
+          <Button title="Select printer" onPress={selectPrinter} />
+          {selectedPrinter ? (
+            <Text>{`Selected printer: ${selectedPrinter.name}`}</Text>
+          ) : undefined}
+        </>
+      )}
 
       <BottomSheetWelcome />
     </View>

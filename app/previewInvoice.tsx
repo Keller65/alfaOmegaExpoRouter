@@ -175,7 +175,7 @@ export default function PreviewInvoice() {
   if (!invoiceDetails) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-white">
-        <Text>No se encontró la información.</Text>
+        <Text className='font-[Poppins-Regular] tracking-[-0.3px]'>No se encontró la información.</Text>
       </SafeAreaView>
     );
   }
@@ -184,12 +184,14 @@ export default function PreviewInvoice() {
     <View className="flex-1 bg-white">
       {loading || !html ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" />
-          <Text className="mt-2">Generando vista previa...</Text>
+          <ActivityIndicator color="black" size="large" />
+          <Text className="mt-2 font-[Poppins-Regular] tracking-[-0.3px]">Generando vista previa...</Text>
         </View>
       ) : (
-        <View className='px-10 flex-1'>
-          <WebView originWhitelist={["*"]} source={{ html }} style={{ flex: 1 }} />
+        <View className='px-10 py-4 flex-1'>
+          <View className='flex-1 bg-white border border-gray-100 shadow-md'>
+            <WebView originWhitelist={["*"]} source={{ html }} style={{ flex: 1 }} />
+          </View>
         </View>
       )}
       <View className="flex-row gap-3 p-4 border-t border-gray-200 bg-white">
