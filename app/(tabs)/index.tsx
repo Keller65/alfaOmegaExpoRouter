@@ -2,11 +2,13 @@ import BottomSheetCart from '@/components/BottomSheetCart/page';
 import BottomSheetWelcome from '@/components/BottomSheetWelcome/page';
 import GoalDonut from '@/components/Dashboard/GoalDonut';
 import KPICard from '@/components/Dashboard/KPICard';
+import UpdateBanner from '@/components/UpdateBanner';
 import { useAuth } from '@/context/auth';
+import { useOtaUpdates } from "@/hooks/useOtaUpdates";
 import { useAppStore } from '@/state';
-import { useCallback, useEffect, useState } from 'react';
-import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import axios from 'axios';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from 'react-native';
 import "../../global.css";
 
 export default function App() {
@@ -84,14 +86,35 @@ export default function App() {
     });
   }, []);
 
-  return (
-    <View className="flex-1 bg-white relative px-4">
+  const { isChecking, isUpdating, error, isUpdateAvailable, checkAndUpdate } = useOtaUpdates();
 
-      <ScrollView
-        className="flex-1 bg-white"
-        contentContainerClassName="gap-4"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-      >
+
+  if (isUpdating) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" />
+        <Text>Actualizando...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    console.warn("Error al buscar OTA:", error);
+  }
+
+  return (
+    <ScrollView
+      className="flex-1 bg-white"
+      contentContainerClassName="gap-4 relative"
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+    >
+      <UpdateBanner
+        visible={isUpdateAvailable}
+        onReload={checkAndUpdate}
+        message="Actualización disponible"
+      />
+
+      <View className='px-4'>
         <Text className="text-2xl font-[Poppins-SemiBold] tracking-[-0.3px] text-gray-900">Dashboard</Text>
 
         <View className="flex-row flex-wrap justify-between gap-4">
@@ -114,13 +137,13 @@ export default function App() {
           centerLabelSecondary={goalData?.centerLabelSecondary}
           lastUpdated={goalData?.lastUpdated}
         />
-      </ScrollView>
 
-      <View className="absolute bottom-4 right-8 gap-3 items-end">
-        {products.length > 0 && (<BottomSheetCart />)}
+        <View className="absolute bottom-4 right-8 gap-3 items-end">
+          {products.length > 0 && (<BottomSheetCart />)}
+        </View>
+
+        <BottomSheetWelcome />
       </View>
-
-      <BottomSheetWelcome />
-    </View>
+    </ScrollView>
   );
 }
