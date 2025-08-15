@@ -9,7 +9,10 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "runtimeVersion": {
+        "policy": "fingerprint"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -17,7 +20,14 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.aerley_adkins2.alfaOmegaExpoRouter"
+      "package": "com.aerley_adkins2.alfaOmegaExpoRouter",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ],
+      "runtimeVersion": "1.0.0"
     },
     "web": {
       "bundler": "metro",
@@ -45,6 +55,9 @@
       "eas": {
         "projectId": "46766cc7-c6cb-4a8e-a448-5f0892fa7936"
       }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/46766cc7-c6cb-4a8e-a448-5f0892fa7936"
     }
   }
 }

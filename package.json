@@ -60,7 +60,9 @@
     "react-native-web": "~0.20.0",
     "react-native-webview": "13.13.5",
     "zustand": "^5.0.6",
-    "expo-network": "~7.1.5"
+    "expo-network": "~7.1.5",
+    "expo-notifications": "~0.31.4",
+    "expo-updates": "~0.28.17"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
