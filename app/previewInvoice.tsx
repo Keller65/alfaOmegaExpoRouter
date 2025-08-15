@@ -186,7 +186,7 @@ export default function PreviewInvoice() {
           </View>
         </View>
       )}
-      <View className="flex-row gap-3 p-4 border-t border-gray-200 bg-white">
+      <View className="flex-row w-full gap-3 p-4 border-t border-gray-200 bg-white">
         <TouchableOpacity
           onPress={print}
           disabled={generating || loading}
@@ -195,14 +195,14 @@ export default function PreviewInvoice() {
           <Feather name="printer" size={18} color="#000" />
           <Text className="ml-2 font-[Poppins-SemiBold]">{generating ? 'Procesando...' : 'Imprimir'}</Text>
         </TouchableOpacity>
-        <TouchableOpacity
+        {/* <TouchableOpacity
           onPress={refresh}
           disabled={loading}
           className={`flex-row items-center justify-center rounded-full px-4 py-3 ${loading ? 'bg-gray-300' : 'bg-gray-200'}`}
         >
           <MaterialIcons name="refresh" size={20} color="#000" />
           <Text className="ml-2 font-[Poppins-Medium]">Actualizar</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
     </View>
   );

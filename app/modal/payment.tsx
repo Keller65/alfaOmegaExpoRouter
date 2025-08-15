@@ -201,7 +201,7 @@ const PaymentScreen = () => {
     return (
       <View className="flex-1 bg-white justify-center items-center">
         <ActivityIndicator size="large" color="#000" />
-        <Text className="mt-4 text-gray-500 tracking-[-0.3px]">
+        <Text className="mt-4 text-gray-500 tracking-[-0.3px] font-[Poppins-SemiBold]">
           Cargando opciones de pago...
         </Text>
       </View>
@@ -214,7 +214,7 @@ const PaymentScreen = () => {
         <Text className="text-red-500 font-[Poppins-Bold] text-center tracking-[-0.3px]">
           {error}
         </Text>
-        <Text className="mt-2 text-gray-500 text-center tracking-[-0.3px]">
+        <Text className="mt-2 text-gray-500 text-center tracking-[-0.3px] font-[Poppins-SemiBold]">
           Verifica tu conexión y el estado del servidor.
         </Text>
       </View>
@@ -454,7 +454,7 @@ const PaymentScreen = () => {
           onPress={handleContinue}
         >
           <Text
-            className={`font-[Poppins-Bold] text-lg tracking-[-0.3px] ${isFormComplete ? 'text-black' : 'text-gray-500'}`}
+            className={`font-[Poppins-SemiBold] text-lg tracking-[-0.3px] ${isFormComplete ? 'text-black' : 'text-gray-500'}`}
           >
             Continuar
           </Text>

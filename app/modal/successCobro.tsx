@@ -1,9 +1,10 @@
+import { useNavigation } from '@react-navigation/native';
 import { useAudioPlayer } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import LottieView from 'lottie-react-native';
 import { useEffect, useRef } from 'react';
-import { Text, TouchableOpacity } from 'react-native';
+import { BackHandler, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const audioSource = require('@/assets/sound/success.mp3');
@@ -14,6 +15,8 @@ const successCobro = () => {
 
   const player = useAudioPlayer(audioSource);
   const { item } = useLocalSearchParams();
+  const navigation = useNavigation();
+  const handledPopRef = useRef(false);
 
   useEffect(() => {
     animation.current?.play();
@@ -22,6 +25,29 @@ const successCobro = () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       player.play()
     }, 350);
+
+    // Interceptar el botón físico de atrás (Android) y fuerza a ir al root
+    const backSub = BackHandler.addEventListener('hardwareBackPress', () => {
+      router.replace('/');
+      return true; // Consumir el evento
+    });
+
+    // Interceptar botón atrás del header (iOS/Android) que hagan POP
+    const navSub = navigation.addListener('beforeRemove', (e: any) => {
+      // Solo cuando es una acción de retroceso (POP)
+      if (e?.data?.action?.type !== 'POP') return;
+      if (handledPopRef.current) return;
+      e.preventDefault();
+      handledPopRef.current = true;
+      router.replace('/');
+      // Liberar el flag después de un tick para permitir futuras navegaciones legítimas
+      setTimeout(() => { handledPopRef.current = false; }, 300);
+    });
+
+    return () => {
+      backSub.remove();
+      navSub && navSub();
+    }
   }, []);
 
   return (
@@ -56,15 +82,6 @@ const successCobro = () => {
       >
         <Text style={{ fontFamily: 'Poppins-Medium', color: '#fff', fontSize: 18, letterSpacing: -0.3 }}>
           Ver Cobro
-        </Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        onPress={() => router.push('/invoices')}
-        style={{ borderWidth: 2, borderColor: '#28a745', width: '100%', height: 50, alignItems: 'center', justifyContent: 'center', borderRadius: 12 }}
-      >
-        <Text style={{ fontFamily: 'Poppins-Medium', color: '#28a745', fontSize: 18, letterSpacing: -0.3 }}>
-          ver cobros
         </Text>
       </TouchableOpacity>
     </SafeAreaView>
