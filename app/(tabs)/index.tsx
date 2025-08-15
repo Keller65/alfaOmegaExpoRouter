@@ -114,7 +114,7 @@ export default function App() {
         message="Actualización disponible"
       />
 
-      <View className='px-4'>
+      <View className='px-4 gap-4'>
         <Text className="text-2xl font-[Poppins-SemiBold] tracking-[-0.3px] text-gray-900">Dashboard</Text>
 
         <View className="flex-row flex-wrap justify-between gap-4">
