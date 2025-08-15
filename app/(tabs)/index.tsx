@@ -95,10 +95,14 @@ export default function App() {
         <Text className="text-2xl font-[Poppins-SemiBold] tracking-[-0.3px] text-gray-900">Dashboard</Text>
 
         <View className="flex-row flex-wrap justify-between gap-4">
-          <KPICard title="Ventas" value={`$${kpis.totalVentas.toLocaleString()}`} delta={kpis.deltaVentas} subtitle="vs. semana ant." />
-          <KPICard title="Tickets" value={kpis.tickets} delta={kpis.deltaTickets} subtitle="vs. semana ant." />
-          <KPICard title="Promedio ticket" value={`$${kpis.promedioTicket.toLocaleString()}`} />
-          <KPICard title="Margen" value={`${kpis.margen}%`} />
+          <View className='flex-row gap-4 w-full'>
+            <KPICard title="Ventas" value={`$${kpis.totalVentas.toLocaleString()}`} delta={kpis.deltaVentas} subtitle="vs. semana ant." />
+            <KPICard title="Tickets" value={kpis.tickets} delta={kpis.deltaTickets} subtitle="vs. semana ant." />
+          </View>
+          <View className='flex-row gap-4 w-full'>
+            <KPICard title="Promedio ticket" value={`$${kpis.promedioTicket.toLocaleString()}`} />
+            <KPICard title="Margen" value={`${kpis.margen}%`} />
+          </View>
         </View>
 
         <GoalDonut

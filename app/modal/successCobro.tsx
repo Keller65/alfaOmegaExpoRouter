@@ -78,6 +78,7 @@ const successCobro = () => {
             item: item
           }
         })}
+        className='rounded-full'
         style={{ backgroundColor: '#28a745', width: '100%', height: 50, alignItems: 'center', justifyContent: 'center', borderRadius: 12, marginBottom: 15 }}
       >
         <Text style={{ fontFamily: 'Poppins-Medium', color: '#fff', fontSize: 18, letterSpacing: -0.3 }}>
