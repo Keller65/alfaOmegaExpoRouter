@@ -4,7 +4,6 @@ import GoalDonut from '@/components/Dashboard/GoalDonut';
 import KPICard from '@/components/Dashboard/KPICard';
 import UpdateBanner from '@/components/UpdateBanner';
 import { useAuth } from '@/context/auth';
-import { useExpoPushToken } from '@/hooks/useExpoPushToken';
 import { useOtaUpdates } from "@/hooks/useOtaUpdates";
 import { useAppStore } from '@/state';
 import axios from 'axios';
@@ -103,15 +102,6 @@ export default function App() {
     console.warn("Error al buscar OTA:", error);
   }
 
-  const expoPushToken = useExpoPushToken();
-
-  useEffect(() => {
-    if (expoPushToken) {
-      console.log('Expo Push Token:', expoPushToken);
-    }
-  }, [expoPushToken]);
-
-
   return (
     <ScrollView
       className="flex-1 bg-white"
@@ -147,14 +137,6 @@ export default function App() {
           centerLabelSecondary={goalData?.centerLabelSecondary}
           lastUpdated={goalData?.lastUpdated}
         />
-
-        {/* Mostrar el token Expo Push en pantalla */}
-        <View style={{ marginTop: 24 }}>
-          <Text className="text-xs text-gray-500">Expo Push Token:</Text>
-          <Text selectable className="text-xs text-gray-700 bg-gray-100 p-2 rounded">
-            {expoPushToken || 'Obteniendo token...'}
-          </Text>
-        </View>
 
         <View className="absolute bottom-4 right-8 gap-3 items-end">
           {products.length > 0 && (<BottomSheetCart />)}
