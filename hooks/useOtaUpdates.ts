@@ -1,5 +1,5 @@
-import * as Updates from "expo-updates";
 import { useEffect, useState } from "react";
+import * as Updates from "expo-updates";
 
 export function useOtaUpdates() {
   const [isChecking, setIsChecking] = useState(false);
